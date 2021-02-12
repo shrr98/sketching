@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from utils import pixel_similarity
+from utils import pixel_similarity, crop_image
 import math
 
 class Drawer:
@@ -49,11 +49,9 @@ class Drawer:
         self.pen_state = action // self.PATCH_SPACE_SIZE
         
         if not self.pen_state: # 1. Pena up
-            self.color_map[:] = 1
             self.draw_stroke(target)
             
         else: # 2. Pena down
-            self.color_map[:] = 0
             self.move_pen(target)
 
         return {
@@ -72,9 +70,6 @@ class Drawer:
     def move_pen(self, target):
         print(f"move pen {target}")
         self.pen_position = target
-        self.distance_map = np.fromfunction(self.func_l2_distance, self.CANVAS_IMG_SIZE)
-        # self.distance_map[self.distance_map > 1] = 1
-        print(f"{np.max(self.distance_map)}\n")
 
     def reset(self):
         """
@@ -111,7 +106,24 @@ class Drawer:
 
         :return: Mat
         """
-        return self.canvas
+        return np.copy(self.canvas)
+
+    def get_patch(self):
+        """
+        Get the current patch image
+
+        :return: Mat
+        """
+        
+        # calculate bounding box
+        top     = self.pen_position[1] - self.PATCH_SIZE//2
+        bottom  = self.pen_position[1] + self.PATCH_SIZE//2 + 1
+        left    = self.pen_position[0] - self.PATCH_SIZE//2
+        right   = self.pen_position[0] + self.PATCH_SIZE//2 + 1 
+
+        crop = crop_image(self.canvas, (top, left, bottom, right))
+
+        return np.copy(crop)
 
     def get_distance_map(self):
         """
@@ -119,7 +131,9 @@ class Drawer:
 
         :return: Mat
         """
-        return self.distance_map
+        self.distance_map = np.fromfunction(self.func_l2_distance, self.CANVAS_IMG_SIZE)
+        # self.distance_map[self.distance_map > 1] = 1
+        return np.copy(self.distance_map)
 
     def get_color_map(self):
         """
@@ -127,7 +141,8 @@ class Drawer:
 
         :return: Mat
         """
-        return self.color_map
+        self.color_map[:] = 1 if self.pen_state else 0
+        return np.copy(self.color_map)
 
 class DrawingEnvironment:
 
@@ -165,7 +180,8 @@ class DrawingEnvironment:
 
         new_observation = (
             self.reference, self.drawer.get_canvas(),
-            self.drawer.get_distance_map(), self.drawer.get_color_map()
+            self.drawer.get_distance_map(), self.drawer.get_color_map(),
+            self.drawer.get_patch()
         )
 
         similarity = pixel_similarity(self.reference, self.drawer.get_canvas())
@@ -202,7 +218,7 @@ class DrawingEnvironment:
                         np.hstack((self.drawer.get_distance_map(), self.drawer.get_color_map())))
             )
             cv2.imshow('Current State', images)
-            cv2.waitKey(100)
+            cv2.waitKey(0)
             return images
 
 
@@ -210,10 +226,10 @@ if __name__ == "__main__":
     env = DrawingEnvironment()
     total_reward = 0
     SAVE_VIDEO = True
-    if SAVE_VIDEO:
-        fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        out = cv2.VideoWriter('output.avi',fourcc, 20.0, (84*2,84*2))
-    for i in range(100):
+    # if SAVE_VIDEO:
+    #     fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    #     out = cv2.VideoWriter('output.avi',fourcc, 20.0, (84*2,84*2))
+    for i in range(20):
         action = np.random.randint(0, 242)
         new_observation, reward, done = env.step(action=action)
         total_reward += reward
@@ -227,6 +243,7 @@ if __name__ == "__main__":
             images = cv2.cvtColor(images, cv2.COLOR_GRAY2BGR)
 
             cv2.imshow("Video", images)
-            out.write(images)
+            cv2.imshow("patch", new_observation[4])
+            # out.write(images)
         
-    out.release()
+    # out.release()
