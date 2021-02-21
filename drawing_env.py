@@ -48,10 +48,10 @@ class Drawer:
 
         self.pen_state = action // self.PATCH_SPACE_SIZE
         
-        if not self.pen_state: # 1. Pena up
+        if not self.pen_state: # 1. Pena down
             self.draw_stroke(target)
             
-        else: # 2. Pena down
+        else: # 2. Pena up
             self.move_pen(target)
 
         return {
@@ -62,13 +62,11 @@ class Drawer:
         
         
     def draw_stroke(self, target):
-        print(f"draw stroke {target}")
-        cv2.line(self.canvas, self.pen_position, target, 0, 1)
+        cv2.line(self.canvas, self.pen_position, target, 1, 1)
         self.move_pen(target)
 
 
     def move_pen(self, target):
-        print(f"move pen {target}")
         self.pen_position = target
 
     def reset(self):
@@ -80,13 +78,13 @@ class Drawer:
         4. Calculate distance map
         5. Calculate color map
         """
-        self.canvas = np.full(self.CANVAS_IMG_SIZE, 1, dtype=np.float)
+        self.canvas = np.full(self.CANVAS_IMG_SIZE, 0, dtype=np.float)
         
         pen_position_init = (np.random.randint(0,self.CANVAS_SIZE), np.random.randint(0,self.CANVAS_SIZE))
         self.move_pen(pen_position_init)
         self.pen_state = 0
 
-        self.color_map = np.zeros(self.CANVAS_IMG_SIZE, dtype=np.float)
+        self.color_map = np.full(self.CANVAS_IMG_SIZE, 1, dtype=np.float)
 
 
     def func_l2_distance(self, x, y):
@@ -141,7 +139,7 @@ class Drawer:
 
         :return: Mat
         """
-        self.color_map[:] = 1 if self.pen_state else 0
+        self.color_map[:] = 0 if self.pen_state else 1
         return np.copy(self.color_map)
 
 class DrawingEnvironment:
