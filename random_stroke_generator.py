@@ -106,7 +106,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
                 ref_patches.clear()
                 num_strokes = 0
 
-        print("Length || X : {} | Patch : {} | y : {}". format(len(X), len(patches), len(y)))
+        # print("Length || X : {} | Patch : {} | y : {}". format(len(X), len(patches), len(y)))
         # Shuffle the batch
         indices = np.arange(self.num_data)
         np.random.shuffle(indices)
@@ -122,16 +122,17 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         """
         still not used
         """
-        self.num_strokes = 0
-        indices = np.arange(self.num_data)
-        np.random.shuffle(indices)
-        X = np.array(self.X, dtype=np.float)[indices]
-        patches = np.array(self.patches, dtype=np.float)[indices]
-        y = np.array(self.y, dtype=np.int)[indices]
+        # self.num_strokes = 0
+        # indices = np.arange(self.num_data)
+        # np.random.shuffle(indices)
+        # X = np.array(self.X, dtype=np.float)[indices]
+        # patches = np.array(self.patches, dtype=np.float)[indices]
+        # y = np.array(self.y, dtype=np.int)[indices]
 
-        self.X =  np.squeeze(X)
-        self.patches = np.squeeze(patches)
-        self.y = np.squeeze(y)
+        # self.X =  np.squeeze(X)
+        # self.patches = np.squeeze(patches)
+        # self.y = np.squeeze(y)
+        self.generate()
 
 
 if __name__ == "__main__":
