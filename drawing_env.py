@@ -106,22 +106,34 @@ class Drawer:
         """
         return np.copy(self.canvas)
 
-    def get_patch(self):
+    def get_patch(self, pen_position=None):
         """
         Get the current patch image
-
+        
+        :param pen_position: absolute pen position as the center of the patch.
         :return: Mat
         """
-        
+
+        if not pen_position:
+            pen_position = self.pen_position
         # calculate bounding box
-        top     = self.pen_position[1] - self.PATCH_SIZE//2
-        bottom  = self.pen_position[1] + self.PATCH_SIZE//2 + 1
-        left    = self.pen_position[0] - self.PATCH_SIZE//2
-        right   = self.pen_position[0] + self.PATCH_SIZE//2 + 1 
+        top     = pen_position[1] - self.PATCH_SIZE//2
+        bottom  = pen_position[1] + self.PATCH_SIZE//2 + 1
+        left    = pen_position[0] - self.PATCH_SIZE//2
+        right   = pen_position[0] + self.PATCH_SIZE//2 + 1 
 
         crop = crop_image(self.canvas, (top, left, bottom, right))
 
         return np.copy(crop)
+
+    def get_pen_position(self):
+        """
+        Get the current pen position.
+
+        :return: list
+        """
+        return self.pen_position
+
 
     def get_distance_map(self):
         """
