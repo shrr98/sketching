@@ -10,9 +10,10 @@ class RandomStrokeGenerator(keras.utils.Sequence):
     """
     MAX_STROKES = 64
 
-    def __init__(self, batch_size, num_data, max_strokes = 16):
+    def __init__(self, batch_size, num_data, min_strokes=8, max_strokes = 16):
         self.batch_size = batch_size
         self.num_data = num_data
+        self.min_strokes = min_strokes
         self.max_strokes = max_strokes
         self.generate()
 
@@ -20,41 +21,6 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         return math.ceil(self.num_data / self.batch_size)
 
     def __getitem__(self, idx):
-        # drawer = Drawer()
-        # drawer.reset()
-        # # skip_strokes = np.random.randint(1,5, self.batch_size)
-        # actions = np.random.randint(0, drawer.ACTION_SPACE_SIZE, self.batch_size+1)
-        # # next_checkpt = skip_strokes[0]
-        # color_maps = []
-        # distance_maps = []
-        # canvases = []
-        # patches = []
-        # refs = []
-        # y = []
-        # for i in range(actions.shape[0]):
-        #     color_maps.append(drawer.get_color_map())
-        #     distance_maps.append(drawer.get_distance_map())
-        #     canvases.append(drawer.get_canvas())
-        #     patches.append(drawer.get_patch())
-        #     y.append(actions[i])
-        #     action_done = drawer.do_action(actions[i])
-        #     refs.append(drawer.get_canvas())
-        # X = []
-
-        # for can, ref, dis, col in zip(canvases, refs, distance_maps, color_maps):
-        #     # print(ref.shape, can.shape, dis.shape, col, shape, pat,shape)
-        #     x = np.stack( (ref, can, dis, col), axis=2)
-        #     # x = ref
-        #     X.append(x)
-        # # print("getitem hampir return")
-
-        # # Shuffle the batch
-        # indices = np.arange(self.batch_size)
-        # np.random.shuffle(indices)
-        # X = np.array(X, dtype=np.float)[indices]
-        # patches = np.array(patches, dtype=np.float)[indices]
-        # y = np.array(y, dtype=np.int)[indices]
-        # return [np.squeeze(X), np.squeeze(patches)], np.squeeze(y)
         batch_start = idx * self.batch_size
         batch_end = min( batch_start + self.batch_size, self.num_data)
         return [self.X[batch_start:batch_end,:,:,:], self.patches[batch_start:batch_end,:,:,:]], self.y[batch_start:batch_end]
@@ -74,6 +40,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         patches = []
         pen_positions = []
         num_strokes = 0
+        max_strokes = np.random.randint(self.min_strokes, self.max_strokes, 1)[0]
         for i in range(actions.shape[0]):
             num_strokes += 1
             color_maps.append(drawer.get_color_map())
@@ -83,7 +50,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
             canv_patches.append(drawer.get_patch())
             y.append(actions[i])
             action_done = drawer.do_action(actions[i])
-            if num_strokes == self.max_strokes or i == self.num_data-1:
+            if num_strokes == max_strokes or i == self.num_data-1:
                 # proceess the ref
                 ref = drawer.get_canvas()
                 for pos in pen_positions:
@@ -97,41 +64,37 @@ class RandomStrokeGenerator(keras.utils.Sequence):
                     p = np.stack( (cp, rp), axis=2)
                     patches.append(p)
                 
-                drawer.reset()
+                drawer.reset()  # Reset drawer state
+
+                # clear all buffers
                 pen_positions.clear()
                 canvases.clear()
                 distance_maps.clear()
                 color_maps.clear()
                 canv_patches.clear()
                 ref_patches.clear()
-                num_strokes = 0
 
-        # print("Length || X : {} | Patch : {} | y : {}". format(len(X), len(patches), len(y)))
-        # Shuffle the batch
+                # Reset strokes
+                num_strokes = 0
+                max_strokes = np.random.randint(self.min_strokes, self.max_strokes, 1)[0]
+
+
+        # Shuffle the dataset
         indices = np.arange(self.num_data)
         np.random.shuffle(indices)
         X = np.array(X, dtype=np.float)[indices]
         patches = np.array(patches, dtype=np.float)[indices]
         y = np.array(y, dtype=np.int)[indices]
 
+        # Squeeze the dims
         self.X =  np.squeeze(X)
         self.patches = np.squeeze(patches)
         self.y = np.squeeze(y)
     
     def on_epoch_end(self):
         """
-        still not used
+        Generate new data at every end of epoch.
         """
-        # self.num_strokes = 0
-        # indices = np.arange(self.num_data)
-        # np.random.shuffle(indices)
-        # X = np.array(self.X, dtype=np.float)[indices]
-        # patches = np.array(self.patches, dtype=np.float)[indices]
-        # y = np.array(self.y, dtype=np.int)[indices]
-
-        # self.X =  np.squeeze(X)
-        # self.patches = np.squeeze(patches)
-        # self.y = np.squeeze(y)
         self.generate()
 
 
