@@ -29,6 +29,10 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         drawer = Drawer()
         drawer.reset()
         actions = np.random.randint(0, drawer.ACTION_SPACE_SIZE, self.num_data)
+        # unique, cnt = np.unique(actions, return_counts=True)
+        # print(np.max(actions))
+        # for i, c in zip(unique, cnt):
+        #     print("{} : {}".format(i, c))
         color_maps = []
         distance_maps = []
         canvases = []
@@ -96,6 +100,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         Generate new data at every end of epoch.
         """
         self.generate()
+
 
 
 if __name__ == "__main__":

@@ -27,6 +27,12 @@ class Drawer:
         self.color_map = None       # colormap untuk keadaan pena 
         self.pen_position = (0,0)   # posisi pena pada kanvas
         self.pen_state = 0          # kondisi pena (0: up, 1: down)
+
+    def set_canvas(self, canvas):
+        self.canvas = np.copy(canvas)
+
+    def set_pen_position(self, pen_position):
+        self.pen_position = pen_position
         
 
     def do_action(self, action):
