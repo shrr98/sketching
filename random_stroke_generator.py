@@ -15,7 +15,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         self.num_data = num_data
         self.min_strokes = min_strokes
         self.max_strokes = max_strokes
-        self.generate()
+        self.on_epoch_end()
 
     def __len__(self):
         return math.ceil(self.num_data / self.batch_size)
@@ -104,7 +104,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
 
 
 if __name__ == "__main__":
-    gen = RandomStrokeGenerator(batch_size=64,num_data=4840, max_strokes=8)
+    gen = RandomStrokeGenerator(batch_size=64,num_data=128, max_strokes=32)
 
     for i in range(1,10):
         [X, x], y = gen.__getitem__(i)
