@@ -13,8 +13,13 @@ class RandomStrokeGenerator(keras.utils.Sequence):
     def __init__(self, batch_size, num_data, min_strokes=8, max_strokes = 16):
         self.batch_size = batch_size
         self.num_data = num_data
+        self.MIN_STROKES = min_strokes
+        self.MAX_STROKES = max_strokes
+        self.curr_step = 4      # curriculum step
+        self.curr_epoch = 10     # curriculum epoch
         self.min_strokes = min_strokes
-        self.max_strokes = max_strokes
+        self.max_strokes = min_strokes + self.curr_step
+        self.epoch = 0
         self.on_epoch_end()
 
     def __len__(self):
@@ -62,7 +67,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
                     ref_patches.append(drawer.get_patch(pos))
                 
                 for can, dis, col, cp, rp in zip(canvases, distance_maps, color_maps, canv_patches, ref_patches):
-                    x = np.stack( (ref, can, dis, col), axis=2)
+                    x = np.stack( (can, ref, dis, col), axis=2)
                     X.append(x)
 
                     p = np.stack( (cp, rp), axis=2)
@@ -99,6 +104,11 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         """
         Generate new data at every end of epoch.
         """
+        self.epoch += 1
+        if self.epoch % self.curr_epoch == 0 and self.max_strokes < self.MAX_STROKES:
+            self.min_strokes += self.curr_step
+            self.max_strokes += self.curr_step
+
         self.generate()
 
 
