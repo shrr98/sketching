@@ -34,6 +34,20 @@ def crop_image(img, bb):
 
     return crop
 
+def position_to_action(position, pen_state, patch_size):
+    """
+    Convert a position step to action.
+    :param position: position step (x,y)
+    :param pen_state: the pen state (0: up, 1: down)
+    :param patch_size: patch size, this also can be used to determine number of possible actions.
+    :return: (int) action
+    """
+    x, y = position
+    action = (x + 5) + (y + 5) * patch_size
+    if pen_state:
+        action += patch_size**2
+    return action
+
 if __name__=="__main__":
     ref = np.random.randint(0,255, (84,84))
     can = np.zeros((84,84))

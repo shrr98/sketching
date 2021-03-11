@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from utils import pixel_similarity, crop_image
+from utils import pixel_similarity, crop_image, position_to_action
 import math
 
 class Drawer:
@@ -55,19 +55,17 @@ class Drawer:
             )
         x_target = target[0] - self.pen_position[0] 
         y_target = target[1] - self.pen_position[1] 
-        
-        # determine the executed action
-        action_real = (x_target + 5) + (y_target + 5) * self.PATCH_SIZE
 
         self.pen_state = action // self.PATCH_SPACE_SIZE
+        
+        # determine the executed action
+        action_real = position_to_action((x_target, y_target), self.pen_state, self.PATCH_SIZE)
         
         if not self.pen_state: # 1. Pena down
             self.draw_stroke(target)
             
         else: # 2. Pena up
             self.move_pen(target)
-            # action to be taken is 121-241
-            action_real += self.PATCH_SPACE_SIZE
 
         return {
             "pen_state" : self.pen_state, 
@@ -251,27 +249,27 @@ class DrawingEnvironment:
 
 
 if __name__ == "__main__":
-    # env = DrawingEnvironment()
-    # total_reward = 0
-    # SAVE_VIDEO = True
-    # # if SAVE_VIDEO:
-    # #     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    # #     out = cv2.VideoWriter('output.avi',fourcc, 20.0, (84*2,84*2))
-    # for i in range(20):
-    #     action = np.random.randint(0, 242)
-    #     new_observation, reward, done = env.step(action=action)
-    #     total_reward += reward
-    #     # print(f"Step {i+1} {reward} \t {total_reward}")
-    #     images = env.show()
-    #     if SAVE_VIDEO:
-    #         images = (np.vstack(
-    #                     (np.hstack((new_observation[0], new_observation[1])),
-    #                     np.hstack((new_observation[2], new_observation[3])))
-    #         )*255).astype("uint8")
-    #         images = cv2.cvtColor(images, cv2.COLOR_GRAY2BGR)
+    env = DrawingEnvironment()
+    total_reward = 0
+    SAVE_VIDEO = True
+    # if SAVE_VIDEO:
+    #     fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    #     out = cv2.VideoWriter('output.avi',fourcc, 20.0, (84*2,84*2))
+    for i in range(20):
+        action = np.random.randint(0, 242)
+        new_observation, reward, done = env.step(action=action)
+        total_reward += reward
+        # print(f"Step {i+1} {reward} \t {total_reward}")
+        images = env.show()
+        if SAVE_VIDEO:
+            images = (np.vstack(
+                        (np.hstack((new_observation[0], new_observation[1])),
+                        np.hstack((new_observation[2], new_observation[3])))
+            )*255).astype("uint8")
+            images = cv2.cvtColor(images, cv2.COLOR_GRAY2BGR)
 
-    #         cv2.imshow("Video", images)
-    #         cv2.imshow("patch", new_observation[4])
-    #         # out.write(images)
+            cv2.imshow("Video", images)
+            cv2.imshow("patch", new_observation[4])
+            # out.write(images)
         
-    # # out.release()
+    # out.release()
