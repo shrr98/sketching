@@ -44,13 +44,20 @@ class Drawer:
         """
         index = action % self.PATCH_SPACE_SIZE
 
+        # expected x and y target by moving to index
         x = index % self.PATCH_SIZE -5
         y = index // self.PATCH_SIZE -5
+
+        # the real x and y target (due to canvas boundary) 
+        target = (
+                min(self.CANVAS_SIZE-1, max(0, (self.pen_position[0]) + x)),
+                min(self.CANVAS_SIZE-1, max(0, (self.pen_position[1]) + y))
+            )
+        x_target = target[0] - self.pen_position[0] 
+        y_target = target[1] - self.pen_position[1] 
         
-        target = (  
-                    min(self.CANVAS_SIZE-1, max(0, (self.pen_position[0]) + x)),
-                    min(self.CANVAS_SIZE-1, max(0, (self.pen_position[1]) + y))   
-                )
+        # determine the executed action
+        action_real = (x_target + 5) + (y_target + 5) * self.PATCH_SIZE
 
         self.pen_state = action // self.PATCH_SPACE_SIZE
         
@@ -59,11 +66,16 @@ class Drawer:
             
         else: # 2. Pena up
             self.move_pen(target)
+            # action to be taken is 121-241
+            action_real += self.PATCH_SPACE_SIZE
 
         return {
             "pen_state" : self.pen_state, 
             "x" : x,
-            "y" : y
+            "y" : y,
+            "x_real" : x_target,
+            "y_real" : y_target,
+            'action_real' : action_real  
         }
         
         
@@ -239,27 +251,27 @@ class DrawingEnvironment:
 
 
 if __name__ == "__main__":
-    env = DrawingEnvironment()
-    total_reward = 0
-    SAVE_VIDEO = True
-    # if SAVE_VIDEO:
-    #     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    #     out = cv2.VideoWriter('output.avi',fourcc, 20.0, (84*2,84*2))
-    for i in range(20):
-        action = np.random.randint(0, 242)
-        new_observation, reward, done = env.step(action=action)
-        total_reward += reward
-        # print(f"Step {i+1} {reward} \t {total_reward}")
-        images = env.show()
-        if SAVE_VIDEO:
-            images = (np.vstack(
-                        (np.hstack((new_observation[0], new_observation[1])),
-                        np.hstack((new_observation[2], new_observation[3])))
-            )*255).astype("uint8")
-            images = cv2.cvtColor(images, cv2.COLOR_GRAY2BGR)
+    # env = DrawingEnvironment()
+    # total_reward = 0
+    # SAVE_VIDEO = True
+    # # if SAVE_VIDEO:
+    # #     fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    # #     out = cv2.VideoWriter('output.avi',fourcc, 20.0, (84*2,84*2))
+    # for i in range(20):
+    #     action = np.random.randint(0, 242)
+    #     new_observation, reward, done = env.step(action=action)
+    #     total_reward += reward
+    #     # print(f"Step {i+1} {reward} \t {total_reward}")
+    #     images = env.show()
+    #     if SAVE_VIDEO:
+    #         images = (np.vstack(
+    #                     (np.hstack((new_observation[0], new_observation[1])),
+    #                     np.hstack((new_observation[2], new_observation[3])))
+    #         )*255).astype("uint8")
+    #         images = cv2.cvtColor(images, cv2.COLOR_GRAY2BGR)
 
-            cv2.imshow("Video", images)
-            cv2.imshow("patch", new_observation[4])
-            # out.write(images)
+    #         cv2.imshow("Video", images)
+    #         cv2.imshow("patch", new_observation[4])
+    #         # out.write(images)
         
-    # out.release()
+    # # out.release()

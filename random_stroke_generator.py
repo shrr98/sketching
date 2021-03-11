@@ -57,8 +57,8 @@ class RandomStrokeGenerator(keras.utils.Sequence):
             pen_positions.append(drawer.get_pen_position())
             canvases.append(drawer.get_canvas())
             canv_patches.append(drawer.get_patch())
-            y.append(actions[i])
             action_done = drawer.do_action(actions[i])
+            y.append(action_done['action_real'])
             if num_strokes == max_strokes or i == self.num_data-1:
                 # proceess the ref
                 ref = drawer.get_canvas()
