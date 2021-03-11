@@ -3,6 +3,7 @@ from tensorflow import keras
 from drawing_env import Drawer
 import math
 import cv2
+from utils import position_to_action
 
 class RandomStrokeGenerator(keras.utils.Sequence):
     """
@@ -35,72 +36,68 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         batch_end = min( batch_start + self.batch_size, self.num_data)
         return [self.X[batch_start:batch_end,:,:,:], self.patches[batch_start:batch_end,:,:,:]], self.y[batch_start:batch_end]
 
-    def randomize_pen_jumping(self, pen_position, canvas_size, pen_step):
+    def get_pen_jumping(self, pen_position, canvas_size, pen_step):
         '''
         Jump the pen to a random position.
         '''
-        # if np.random.random(1)[0] <= self.jumping_rate:
-        if True:
-            max_x = self.max_jumping_step
-            min_x = -self.max_jumping_step
-            max_y = self.max_jumping_step
-            min_y = -self.max_jumping_step
+    
+        max_x = self.max_jumping_step
+        min_x = -self.max_jumping_step
+        max_y = self.max_jumping_step
+        min_y = -self.max_jumping_step
 
-            if pen_position[0] + max_x >= canvas_size:
-                max_x = (canvas_size-1) - pen_position[0]
-            elif pen_position[0] + min_x < 0:
-                min_x = -pen_position[0]
-
-
-            if pen_position[1] + max_y >= canvas_size:
-                max_y = (canvas_size-1) - pen_position[1]
-            elif pen_position[1] + min_y < 0:
-                min_y = -pen_position[1]
-
-            x_jump = np.random.randint(min_x, max_x, 1)[0]
-            y_jump = np.random.randint(min_y, max_y, 1)[0]
-            
-            x_direction = 1 if x_jump >=0 else -1
-            y_direction = 1 if y_jump >= 0 else -1
-            
-            print(x_jump, y_jump)
-
-            if x_jump==0 and y_jump==0: # if not jumping
-                return None
-
-            x_steps = [x_direction*pen_step for _ in range(x_direction*pen_step, x_jump+x_direction, x_direction*pen_step)]
-            if x_jump % pen_step :
-                if x_direction==1:
-                    x_steps.append(x_jump%pen_step)
-                else:
-                    x_steps.append(x_jump%pen_step - pen_step)
-            
-            y_steps = [y_direction*pen_step for _ in range(y_direction*pen_step, y_jump+y_direction, y_direction*pen_step)]
-            if y_jump % pen_step :
-                if y_direction==1:
-                    y_steps.append(y_jump%pen_step)
-                else:
-                    y_steps.append(y_jump%pen_step - pen_step)
-
-            moves = []
-            
-            if len(x_steps) >= len(y_steps):
-                moves = [(x,y) for x, y in zip(x_steps[:len(y_steps)], y_steps)]
-                for x in x_steps[len(y_steps):] :
-                    moves.append((x,0))
-            elif len(x_steps) < len(y_steps):
-                moves = [(x,y) for x, y in zip(x_steps, y_steps[:len(y_steps)])]
-                for y in y_steps[len(x_steps):]:
-                    moves.append((0,y))
+        if pen_position[0] + max_x >= canvas_size:
+            max_x = (canvas_size-1) - pen_position[0]
+        elif pen_position[0] + min_x < 0:
+            min_x = -pen_position[0]
 
 
-            return moves
+        if pen_position[1] + max_y >= canvas_size:
+            max_y = (canvas_size-1) - pen_position[1]
+        elif pen_position[1] + min_y < 0:
+            min_y = -pen_position[1]
+
+        x_jump = np.random.randint(min_x, max_x, 1)[0]
+        y_jump = np.random.randint(min_y, max_y, 1)[0]
+        
+        x_direction = 1 if x_jump >=0 else -1
+        y_direction = 1 if y_jump >= 0 else -1
+        
+        if x_jump==0 and y_jump==0: # if not jumping
+            return None
+
+        x_steps = [x_direction*pen_step for _ in range(x_direction*pen_step, x_jump+x_direction, x_direction*pen_step)]
+        if x_jump % pen_step :
+            if x_direction==1:
+                x_steps.append(x_jump%pen_step)
+            else:
+                x_steps.append(x_jump%pen_step - pen_step)
+        
+        y_steps = [y_direction*pen_step for _ in range(y_direction*pen_step, y_jump+y_direction, y_direction*pen_step)]
+        if y_jump % pen_step :
+            if y_direction==1:
+                y_steps.append(y_jump%pen_step)
+            else:
+                y_steps.append(y_jump%pen_step - pen_step)
+
+        moves = []
+        
+        if len(x_steps) >= len(y_steps):
+            moves = [(x,y) for x, y in zip(x_steps[:len(y_steps)], y_steps)]
+            for x in x_steps[len(y_steps):] :
+                moves.append((x,0))
+        elif len(x_steps) < len(y_steps):
+            moves = [(x,y) for x, y in zip(x_steps, y_steps[:len(y_steps)])]
+            for y in y_steps[len(x_steps):]:
+                moves.append((0,y))
+
         return moves
 
     
     def generate(self):
         drawer = Drawer()
         drawer.reset()
+
         actions = np.random.randint(0, drawer.ACTION_SPACE_SIZE/2, self.num_data)
         
         color_maps = []
@@ -123,9 +120,24 @@ class RandomStrokeGenerator(keras.utils.Sequence):
             canvases.append(drawer.get_canvas())
             canv_patches.append(drawer.get_patch())
             action_done = drawer.do_action(actions[i])
-            y.append(action_done['action_real'])
+            y.append(action_done["action_real"])
             
-            
+            if num_strokes < max_strokes and np.random.random(1)[0] <= self.jumping_rate:
+                jumping_steps = self.get_pen_jumping(pen_positions[-1], drawer.CANVAS_SIZE, drawer.PATCH_SIZE//2)
+                if jumping_steps is not None:   # if jumping
+                    print("jump")
+                    for jump in jumping_steps:
+                        num_strokes += 1
+                        jump_action = position_to_action(jump, 0, drawer.PATCH_SIZE)
+                        color_maps.append(drawer.get_color_map())
+                        distance_maps.append(drawer.get_distance_map())
+                        pen_positions.append(drawer.get_pen_position())
+                        canvases.append(drawer.get_canvas())
+                        canv_patches.append(drawer.get_patch())
+                        action_done = drawer.do_action(jump_action)
+                        y.append(action_done['action_real'])
+                        if num_strokes == max_strokes:
+                            break
 
             if num_strokes == max_strokes or i == self.num_data-1:
                 # proceess the ref
@@ -182,20 +194,20 @@ class RandomStrokeGenerator(keras.utils.Sequence):
 
 
 if __name__ == "__main__":
-    gen = RandomStrokeGenerator(batch_size=64,num_data=128, max_strokes=32)
+    gen = RandomStrokeGenerator(batch_size=32,num_data=128, max_strokes=32)
 
-    moves = gen.randomize_pen_jumping((80,80), 84, 5)
+    # moves = gen.randomize_pen_jumping((80,80), 84, 5)
 
-    print(moves)
+    # print(moves)
 
-    # for i in range(1,10):
-    #     [X, x], y = gen.__getitem__(i)
-    #     print(X.shape)
-    #     print(x.shape)
-    #     images = np.hstack((X[0][:,:,0], X[0][:,:,1], X[0][:,:,2], X[0][:,:,3], cv2.resize(x[0][:,:,0], (84,84)), cv2.resize(x[0][:,:,1], (84,84))))
-    #     for j in range(1,4):
-    #         im1 = np.hstack((X[j][:,:,0], X[j][:,:,1], X[j][:,:,2], X[j][:,:,3], cv2.resize(x[j][:,:,0], (84,84)), cv2.resize(x[j][:,:,1], (84,84))))
-    #         images = np.vstack((images, im1))
+    for i in range(1,10):
+        [X, x], y = gen.__getitem__(i)
+        print(X.shape)
+        print(x.shape)
+        images = np.hstack((X[0][:,:,0], X[0][:,:,1], X[0][:,:,2], X[0][:,:,3], cv2.resize(x[0][:,:,0], (84,84)), cv2.resize(x[0][:,:,1], (84,84))))
+        for j in range(1,4):
+            im1 = np.hstack((X[j][:,:,0], X[j][:,:,1], X[j][:,:,2], X[j][:,:,3], cv2.resize(x[j][:,:,0], (84,84)), cv2.resize(x[j][:,:,1], (84,84))))
+            images = np.vstack((images, im1))
 
-    #     cv2.imshow("images", images)
-    #     cv2.waitKey(0)
+        cv2.imshow("images", images)
+        cv2.waitKey(0)
