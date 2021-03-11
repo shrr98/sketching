@@ -34,6 +34,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
     def __getitem__(self, idx):
         batch_start = idx * self.batch_size
         batch_end = min( batch_start + self.batch_size, self.num_data)
+        print(batch_start, batch_end)
         return [self.X[batch_start:batch_end,:,:,:], self.patches[batch_start:batch_end,:,:,:]], self.y[batch_start:batch_end]
 
     def get_pen_jumping(self, pen_position, canvas_size, pen_step):
@@ -98,7 +99,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         drawer = Drawer()
         drawer.reset()
 
-        actions = np.random.randint(0, drawer.ACTION_SPACE_SIZE/2, self.num_data)
+        actions = np.random.randint(drawer.ACTION_SPACE_SIZE/2, drawer.ACTION_SPACE_SIZE, self.num_data)
         
         color_maps = []
         distance_maps = []
@@ -125,7 +126,6 @@ class RandomStrokeGenerator(keras.utils.Sequence):
             if num_strokes < max_strokes and np.random.random(1)[0] <= self.jumping_rate:
                 jumping_steps = self.get_pen_jumping(pen_positions[-1], drawer.CANVAS_SIZE, drawer.PATCH_SIZE//2)
                 if jumping_steps is not None:   # if jumping
-                    print("jump")
                     for jump in jumping_steps:
                         num_strokes += 1
                         jump_action = position_to_action(jump, 0, drawer.PATCH_SIZE)
@@ -198,14 +198,14 @@ if __name__ == "__main__":
 
     # moves = gen.randomize_pen_jumping((80,80), 84, 5)
 
-    # print(moves)
+    print(len(gen))
 
-    for i in range(1,10):
+    for i in range(0,len(gen)):
         [X, x], y = gen.__getitem__(i)
         print(X.shape)
         print(x.shape)
         images = np.hstack((X[0][:,:,0], X[0][:,:,1], X[0][:,:,2], X[0][:,:,3], cv2.resize(x[0][:,:,0], (84,84)), cv2.resize(x[0][:,:,1], (84,84))))
-        for j in range(1,4):
+        for j in range(1,8):
             im1 = np.hstack((X[j][:,:,0], X[j][:,:,1], X[j][:,:,2], X[j][:,:,3], cv2.resize(x[j][:,:,0], (84,84)), cv2.resize(x[j][:,:,1], (84,84))))
             images = np.vstack((images, im1))
 
