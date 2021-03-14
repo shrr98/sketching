@@ -16,15 +16,15 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         self.num_data = num_data
         self.MIN_STROKES = min_strokes
         self.MAX_STROKES = max_strokes
-        self.curr_step = 4      # curriculum step
-        self.curr_epoch = 10     # curriculum epoch
+        self.curr_step = 8      # curriculum step
+        self.curr_epoch = 3     # curriculum epoch
         self.min_strokes = min_strokes
         self.max_strokes = min_strokes + self.curr_step
         self.epoch = 0
 
         # params for pen jumping
-        self.jumping_rate = 0.1
-        self.max_jumping_step = 23
+        self.jumping_rate = 0.01
+        self.max_jumping_step = 41
 
         self.on_epoch_end()
 
@@ -34,7 +34,6 @@ class RandomStrokeGenerator(keras.utils.Sequence):
     def __getitem__(self, idx):
         batch_start = idx * self.batch_size
         batch_end = min( batch_start + self.batch_size, self.num_data)
-        print(batch_start, batch_end)
         return [self.X[batch_start:batch_end,:,:,:], self.patches[batch_start:batch_end,:,:,:]], self.y[batch_start:batch_end]
 
     def get_pen_jumping(self, pen_position, canvas_size, pen_step):
@@ -99,7 +98,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         drawer = Drawer()
         drawer.reset()
 
-        actions = np.random.randint(drawer.ACTION_SPACE_SIZE/2, drawer.ACTION_SPACE_SIZE, self.num_data)
+        actions = np.random.randint(0, drawer.ACTION_SPACE_SIZE, self.num_data)
         
         color_maps = []
         distance_maps = []
@@ -114,18 +113,10 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         num_strokes = 0
         max_strokes = np.random.randint(self.min_strokes, self.max_strokes, 1)[0]
         for i in range(actions.shape[0]):
-            num_strokes += 1
-            color_maps.append(drawer.get_color_map())
-            distance_maps.append(drawer.get_distance_map())
-            pen_positions.append(drawer.get_pen_position())
-            canvases.append(drawer.get_canvas())
-            canv_patches.append(drawer.get_patch())
-            action_done = drawer.do_action(actions[i])
-            y.append(action_done["action_real"])
-            
-            if num_strokes < max_strokes and np.random.random(1)[0] <= self.jumping_rate:
-                jumping_steps = self.get_pen_jumping(pen_positions[-1], drawer.CANVAS_SIZE, drawer.PATCH_SIZE//2)
+            if num_strokes < max_strokes-1 and np.random.random(1)[0] <= self.jumping_rate:
+                jumping_steps = self.get_pen_jumping(drawer.get_pen_position(), drawer.CANVAS_SIZE, drawer.PATCH_SIZE//2)
                 if jumping_steps is not None:   # if jumping
+                    # print("jump")
                     for jump in jumping_steps:
                         num_strokes += 1
                         jump_action = position_to_action(jump, 0, drawer.PATCH_SIZE)
@@ -136,8 +127,18 @@ class RandomStrokeGenerator(keras.utils.Sequence):
                         canv_patches.append(drawer.get_patch())
                         action_done = drawer.do_action(jump_action)
                         y.append(action_done['action_real'])
-                        if num_strokes == max_strokes:
+                        if num_strokes == max_strokes-1:
                             break
+
+            num_strokes += 1
+            color_maps.append(drawer.get_color_map())
+            distance_maps.append(drawer.get_distance_map())
+            pen_positions.append(drawer.get_pen_position())
+            canvases.append(drawer.get_canvas())
+            canv_patches.append(drawer.get_patch())
+            action_done = drawer.do_action(actions[i])
+            y.append(action_done["action_real"])
+            
 
             if num_strokes == max_strokes or i == self.num_data-1:
                 # proceess the ref
@@ -194,7 +195,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
 
 
 if __name__ == "__main__":
-    gen = RandomStrokeGenerator(batch_size=32,num_data=128, max_strokes=32)
+    gen = RandomStrokeGenerator(batch_size=32,num_data=256, max_strokes=256)
 
     # moves = gen.randomize_pen_jumping((80,80), 84, 5)
 

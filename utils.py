@@ -23,7 +23,7 @@ def crop_image(img, bb):
     top, left, bottom, right = bb
     row, col = img.shape
     target_row, target_col = (bottom-top, right-left)
-    crop = np.full((bottom-top, right-left), 1, dtype=np.float)
+    crop = np.full((bottom-top, right-left), 0, dtype=np.float)
 
     target_top, top = (0, top) if top>=0 else (-top, 0)
     target_left, left = (0, left) if left>=0 else (-left, 0)

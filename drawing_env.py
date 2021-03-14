@@ -78,7 +78,7 @@ class Drawer:
         
         
     def draw_stroke(self, target):
-        cv2.line(self.canvas, self.pen_position, target, 0, 1)
+        cv2.line(self.canvas, self.pen_position, target, 1, 1)
         self.move_pen(target)
 
 
@@ -94,10 +94,10 @@ class Drawer:
         4. Calculate distance map
         5. Calculate color map
         """
-        self.canvas = np.full(self.CANVAS_IMG_SIZE, 1, dtype=np.float)
+        self.canvas = np.full(self.CANVAS_IMG_SIZE, 0, dtype=np.float)
         
-        pen_position_init = (np.random.randint(0,self.CANVAS_SIZE), np.random.randint(0,self.CANVAS_SIZE))
-        self.move_pen(pen_position_init)
+        self.pen_position = (np.random.randint(0,self.CANVAS_SIZE), np.random.randint(0,self.CANVAS_SIZE))
+        self.move_pen(self.pen_position)
         self.pen_state = 0
 
         self.color_map = np.full(self.CANVAS_IMG_SIZE, 0, dtype=np.float)
