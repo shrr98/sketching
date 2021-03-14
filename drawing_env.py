@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from utils import pixel_similarity, crop_image
+from utils import pixel_similarity, crop_image, position_to_action
 import math
 
 class Drawer:
@@ -44,17 +44,24 @@ class Drawer:
         """
         index = action % self.PATCH_SPACE_SIZE
 
+        # expected x and y target by moving to index
         x = index % self.PATCH_SIZE -5
         y = index // self.PATCH_SIZE -5
-        
-        target = (  
-                    min(self.CANVAS_SIZE-1, max(0, (self.pen_position[0]) + x)),
-                    min(self.CANVAS_SIZE-1, max(0, (self.pen_position[1]) + y))   
-                )
+
+        # the real x and y target (due to canvas boundary) 
+        target = (
+                min(self.CANVAS_SIZE-1, max(0, (self.pen_position[0]) + x)),
+                min(self.CANVAS_SIZE-1, max(0, (self.pen_position[1]) + y))
+            )
+        x_target = target[0] - self.pen_position[0] 
+        y_target = target[1] - self.pen_position[1] 
 
         self.pen_state = action // self.PATCH_SPACE_SIZE
         
-        if not self.pen_state: # 1. Pena down
+        # determine the executed action
+        action_real = position_to_action((x_target, y_target), self.pen_state, self.PATCH_SIZE)
+        
+        if self.pen_state: # 1. Pena down
             self.draw_stroke(target)
             
         else: # 2. Pena up
@@ -63,7 +70,10 @@ class Drawer:
         return {
             "pen_state" : self.pen_state, 
             "x" : x,
-            "y" : y
+            "y" : y,
+            "x_real" : x_target,
+            "y_real" : y_target,
+            'action_real' : action_real  
         }
         
         
@@ -86,11 +96,11 @@ class Drawer:
         """
         self.canvas = np.full(self.CANVAS_IMG_SIZE, 0, dtype=np.float)
         
-        pen_position_init = (np.random.randint(0,self.CANVAS_SIZE), np.random.randint(0,self.CANVAS_SIZE))
-        self.move_pen(pen_position_init)
+        self.pen_position = (np.random.randint(0,self.CANVAS_SIZE), np.random.randint(0,self.CANVAS_SIZE))
+        self.move_pen(self.pen_position)
         self.pen_state = 0
 
-        self.color_map = np.full(self.CANVAS_IMG_SIZE, 1, dtype=np.float)
+        self.color_map = np.full(self.CANVAS_IMG_SIZE, 0, dtype=np.float)
 
 
     def func_l2_distance(self, x, y):
@@ -157,7 +167,7 @@ class Drawer:
 
         :return: Mat
         """
-        self.color_map[:] = 0 if self.pen_state else 1
+        self.color_map[:] = self.pen_state
         return np.copy(self.color_map)
 
 class DrawingEnvironment:
