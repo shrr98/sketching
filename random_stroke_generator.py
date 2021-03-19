@@ -1,9 +1,9 @@
 import numpy as np
 from tensorflow import keras
-from drawing_env import Drawer
+from environment.drawer import Drawer
 import math
 import cv2
-from utils import position_to_action
+from utils.utils import position_to_action
 
 class RandomStrokeGenerator(keras.utils.Sequence):
     """
