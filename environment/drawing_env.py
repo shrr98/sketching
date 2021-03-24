@@ -22,7 +22,7 @@ class DrawingEnvironment:
         """
         Reset the RL Environment
         """
-        self.reference.load_canvas("examples/15.png") # placeholder
+        self.reference.load_canvas("examples/bedroom.png") # placeholder
         self.episode_step = 0
         self.drawer.reset()
 

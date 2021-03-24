@@ -4,7 +4,7 @@ from environment.drawing_env import DrawingEnvironment
 import tensorflow as tf
 
 if __name__ == "__main__":
-    model = tf.keras.models.load_model("model/1403-minstrokes4-maxstrokes64-jumping-0_01-whiteonblack-242-6.h5")
+    model = tf.keras.models.load_model("model/2403-minstrokes4-maxstrokes64-jumping-0_01-whiteonblack-242-6-maxpool.h5")
     env = DrawingEnvironment()
     total_reward = 0
     SAVE_VIDEO = True
@@ -24,8 +24,9 @@ if __name__ == "__main__":
         print(f"Step {i+1} {reward} \t {total_reward}")
         images = env.show()
         if done :
-            cv2.waitKey(0)
             break
+    tf.keras.backend.clear_session()
+    cv2.waitKey(0)
         # if SAVE_VIDEO:
         #     images = (np.vstack(
         #                 (np.hstack((new_observation[0], new_observation[1])),
