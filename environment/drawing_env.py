@@ -2,31 +2,43 @@ import cv2
 import numpy as np
 from utils.utils import pixel_similarity, crop_image, position_to_action
 import math
+import os
 from environment.drawer import Drawer
 from environment.reference import Reference 
 
 class DrawingEnvironment:
 
     SHOW_RENDER = True
-    MAX_STEP    = 200
+    MAX_STEP    = 100
     GOAL_SIMILARITY_THRESH = .005
 
     PENALTY_STEP = -10 # coba coba
 
-    def __init__(self):
+    def __init__(self, datadir='examples/'):
         self.reference = Reference() # Reference Image to be drawn
         self.drawer = Drawer()
+        self.reference_paths = self._get_all_references(datadir)
         self.reset()
 
     def reset(self):
         """
         Reset the RL Environment
         """
-        self.reference.load_canvas("examples/bedroom.png") # placeholder
+        index = np.random.randint(0, len(self.reference_paths))
+        self.reference.load_canvas(self.reference_paths[index]) # placeholder
         self.episode_step = 0
         self.drawer.reset()
 
         self.last_similarity = pixel_similarity(self.reference.get_canvas(), self.drawer.get_canvas())
+
+        observation = self.get_observation()
+        return observation
+
+    def _get_all_references(self, datadir):
+        paths = []
+        for f in os.listdir(datadir):
+            paths.append(os.path.join(datadir, f))
+        return paths
 
     def get_observation(self):
         observation_global = np.expand_dims(np.stack(
@@ -62,7 +74,7 @@ class DrawingEnvironment:
         new_observation = self.get_observation()
 
         similarity = pixel_similarity(self.reference.get_canvas(), self.drawer.get_canvas())
-        print("similarity: {} {}".format(similarity, similarity/255**2))
+        # print("similarity: {} {}".format(similarity, similarity/255**2))
 
         reward = self.calculate_reward(similarity, action_taken)
 
