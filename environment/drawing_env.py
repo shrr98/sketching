@@ -106,9 +106,26 @@ class DrawingEnvironment:
         :return: None
         """
         if self.SHOW_RENDER:
+            canvas = np.array(self.drawer.get_canvas()*255, dtype=np.uint8)
+            canvas = cv2.cvtColor(canvas, cv2.COLOR_GRAY2BGR)
+
+            ref = np.array(self.reference.get_canvas()*255, dtype=np.uint8)
+            ref = cv2.cvtColor(ref, cv2.COLOR_GRAY2BGR)
+            
+            pen_pos = self.drawer.get_pen_position()
+
+            canvas = cv2.circle(canvas, pen_pos, 1, (0,0,255), 1)
+            ref = cv2.circle(ref, pen_pos, 1, (0,0,255), 1)
+
+            distance_map = np.array(self.drawer.get_distance_map()*255, dtype=np.uint8)
+            distance_map = cv2.cvtColor(distance_map, cv2.COLOR_GRAY2BGR)
+            
+            color_map = np.array(self.drawer.get_color_map()*255, dtype=np.uint8)
+            color_map = cv2.cvtColor(color_map, cv2.COLOR_GRAY2BGR)
+
             images = np.vstack(
-                        (np.hstack((self.reference.get_canvas(), self.drawer.get_canvas())),
-                        np.hstack((self.drawer.get_distance_map(), self.drawer.get_color_map())))
+                        (np.hstack((ref, canvas)),
+                        np.hstack((distance_map, color_map)))
             )
             cv2.imshow('Current State', images)
             cv2.waitKey(1)
