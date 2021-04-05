@@ -1,9 +1,9 @@
 import numpy as np
 from tensorflow import keras
-from drawing_env import Drawer
+from environment.drawer import Drawer
 import math
 import cv2
-from utils import position_to_action
+from utils.utils import position_to_action
 
 class RandomStrokeGenerator(keras.utils.Sequence):
     """
@@ -11,7 +11,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
     """
     MAX_STROKES = 64
 
-    def __init__(self, batch_size, num_data, min_strokes=8, max_strokes = 16):
+    def __init__(self, batch_size, num_data, min_strokes=8, max_strokes = 16, jumping_rate=0, max_jumping_step=41):
         self.batch_size = batch_size
         self.num_data = num_data
         self.MIN_STROKES = min_strokes
@@ -23,8 +23,8 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         self.epoch = 0
 
         # params for pen jumping
-        self.jumping_rate = 0.01
-        self.max_jumping_step = 41
+        self.jumping_rate = jumping_rate
+        self.max_jumping_step = max_jumping_step
 
         self.on_epoch_end()
 
