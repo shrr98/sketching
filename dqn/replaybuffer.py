@@ -10,7 +10,7 @@ class ReplayBuffer:
     """
 
     def __init__(self):
-        self.gameplay_experiences = deque(maxlen=1_000_000)
+        self.gameplay_experiences = deque(maxlen=50_000)
 
     def store_gameplay_experience(self, state, next_state, reward, action, done):
         """
@@ -32,7 +32,7 @@ class ReplayBuffer:
 
         :return: a list of gameplay experiences
         """
-        batch_size = min(8, len(self.gameplay_experiences))
+        batch_size = min(512, len(self.gameplay_experiences))
         sampled_gameplay_batch = random.sample(self.gameplay_experiences, batch_size)
 
         state_global_patches = []

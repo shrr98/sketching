@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorboard import TensorBoard
+from tensorflow.keras.callbacks import TensorBoard
 
 class ModifiedTensorBoard(TensorBoard):
 

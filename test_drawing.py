@@ -4,8 +4,11 @@ from environment.drawing_env import DrawingEnvironment
 import tensorflow as tf
 
 if __name__ == "__main__":
-    model = tf.keras.models.load_model("model/2403-minstrokes4-maxstrokes64-jumping-0_01-whiteonblack-242-6-maxpool.h5")
-    env = DrawingEnvironment()
+    config = tf.compat.v1.ConfigProto()
+    config.gpu_options.allow_growth = True
+    sess = tf.compat.v1.Session(config=config)
+    model = tf.keras.models.load_model("models/dqn_1000_from0_datasets_1617417775___-30.93max_-393.89avg_-653.58min.h5")
+    env = DrawingEnvironment("datasets/")
     total_reward = 0
     SAVE_VIDEO = True
     # if SAVE_VIDEO:
@@ -14,9 +17,10 @@ if __name__ == "__main__":
     observation = env.get_observation()
     print(observation[0].shape, observation[1].shape)
 
-    for i in range(200):
+    for i in range(500):
         # action = np.random.randint(0, 242)
         pred = model.predict(observation)
+        print(pred.tolist())
         action = np.argmax(pred)
         new_observation, reward, done = env.step(action=action)
         observation = new_observation

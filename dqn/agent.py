@@ -1,8 +1,11 @@
 import tensorflow as tf
 import numpy as np
 from tensorflow.python.keras import Sequential, Model
-from tensorflow.python.keras.layers import Dense
+from tensorflow.python.keras.layers import Dense, Activation
+
 from tensorflow.python.keras.optimizers import Adam
+import time
+from dqn.modifiedtb import ModifiedTensorBoard
 
 class DQNAgent:
     """
@@ -12,9 +15,12 @@ class DQNAgent:
 
     def __init__(self, model_path=None):
         self.ACTION_SPACE_SIZE = 242
+        self.MIN_EPSILON = 0.02
+        self.EPSILON = 0.5
+        self.MODEL_NAME = "dqn_4000_from3000_datasets"
         self.q_net = self._load_pretrained_dqn_model(model_path, action_space=self.ACTION_SPACE_SIZE)
         self.target_q_net = self._load_pretrained_dqn_model(model_path, action_space=self.ACTION_SPACE_SIZE)
-        self.EPSILON = 0.05
+        self.tensorboard = ModifiedTensorBoard(log_dir=f"logs/{self.MODEL_NAME}-{int(time.time())}", profile_batch=0)
 
     @staticmethod
     def _build_dqn_model():
@@ -31,24 +37,23 @@ class DQNAgent:
         q_net.add(Dense(32, activation='relu', kernel_initializer='he_uniform'))
         q_net.add(Dense(2, activation='linear', kernel_initializer='he_uniform'))
 
-        q_net.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
+        q_net.compile(optimizer=Adam(learning_rate=0.001), loss='mse', metrics=["accuracy"])
 
         return q_net
 
     @staticmethod
     def _load_pretrained_dqn_model(model_path, action_space):
         model_pretrained = tf.keras.models.load_model(model_path)
+        # model = tf.keras.models.load_model(model_path)
+        # for layer in model_pretrained.layers[:-5]:
+        #     layer.trainable = False
 
         x = model_pretrained.layers[-2].output
 
-        outputs = Dense(action_space, activation="linear", name="Qval")(x)
+        outputs = Activation("linear", name="QValue")(x)
         model = Model(inputs=model_pretrained.inputs, outputs=outputs)
         
         model.compile(loss="mse", optimizer=tf.keras.optimizers.Adam(lr=0.001), metrics=['accuracy'])
-
-        from tensorflow import keras
-
-        keras.utils.plot_model(model, "xxxx.png", show_shapes=False)
         
         return model
 
@@ -96,6 +101,17 @@ class DQNAgent:
         """
         self.target_q_net.set_weights(self.q_net.get_weights())
 
+    def rollback_network(self):
+        """
+        Updates the current target_q_net with the q_net which brings all the
+        training in the q_net to the target_q_net.
+        
+        :return: None
+        """
+        self.q_net.set_weights(self.target_q_net.get_weights())
+
+    def update_epsilon(self):
+        self.EPSILON *= 0.75
 
     
     def train(self, batch):
@@ -115,10 +131,11 @@ class DQNAgent:
         for i in range(action_batch.shape[0]):
             target_q_val = reward_batch[i]
             if not done_batch[i]:
-                target_q_val += 0.95 * max_next_q[i] # discount
+                target_q_val += 0.997 * max_next_q[i] # discount
             target_q[i][action_batch[i]] = target_q_val
 
-        training_history = self.q_net.fit(x=state_batch, y= target_q, verbose=0)
+        training_history = self.q_net.fit(x=state_batch, y= target_q, verbose=0, callbacks=[self.tensorboard])
         loss = training_history.history['loss']
 
         return loss
+
