@@ -19,7 +19,8 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         self.curr_step = 8      # curriculum step
         self.curr_epoch = 3     # curriculum epoch
         self.min_strokes = min_strokes
-        self.max_strokes = min_strokes + self.curr_step
+        # self.max_strokes = min_strokes + self.curr_step
+        self.max_strokes = max_strokes
         self.epoch = 0
 
         # params for pen jumping
@@ -98,7 +99,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         drawer = Drawer()
         drawer.reset()
 
-        actions = np.random.randint(0, drawer.ACTION_SPACE_SIZE, self.num_data)
+        actions = np.random.randint(drawer.ACTION_SPACE_SIZE//2, drawer.ACTION_SPACE_SIZE, self.num_data)
         
         color_maps = []
         distance_maps = []
@@ -113,7 +114,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         num_strokes = 0
         max_strokes = np.random.randint(self.min_strokes, self.max_strokes, 1)[0]
         for i in range(actions.shape[0]):
-            if num_strokes < max_strokes-1 and np.random.random(1)[0] <= self.jumping_rate:
+            if i>actions.shape[0]//3*2 and drawer.pen_state == 1 and num_strokes < max_strokes-1 and np.random.random(1)[0] <= self.jumping_rate:
                 jumping_steps = self.get_pen_jumping(drawer.get_pen_position(), drawer.CANVAS_SIZE, drawer.PATCH_SIZE//2)
                 if jumping_steps is not None:   # if jumping
                     # print("jump")
@@ -186,16 +187,16 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         Generate new data at every end of epoch.
         """
         self.epoch += 1
-        if self.epoch % self.curr_epoch == 0 and self.max_strokes < self.MAX_STROKES:
-            self.min_strokes += self.curr_step
-            self.max_strokes += self.curr_step
+        # if self.epoch % self.curr_epoch == 0 and self.max_strokes < self.MAX_STROKES:
+        #     self.min_strokes += self.curr_step
+        #     self.max_strokes += self.curr_step
 
         self.generate()
 
 
 
 if __name__ == "__main__":
-    gen = RandomStrokeGenerator(batch_size=32,num_data=256, max_strokes=256)
+    gen = RandomStrokeGenerator(batch_size=32,num_data=256, max_strokes=64, jumping_rate=0.5)
 
     # moves = gen.randomize_pen_jumping((80,80), 84, 5)
 
