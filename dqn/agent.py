@@ -15,9 +15,9 @@ class DQNAgent:
 
     def __init__(self, model_path=None):
         self.ACTION_SPACE_SIZE = 242
-        self.MIN_EPSILON = 0.02
-        self.EPSILON = 0.5
-        self.MODEL_NAME = "dqn_4000_from3000_datasets"
+        self.MIN_EPSILON = 0.01
+        self.EPSILON = 0.1
+        self.MODEL_NAME = "dqn_new4_rewardbaru"
         self.q_net = self._load_pretrained_dqn_model(model_path, action_space=self.ACTION_SPACE_SIZE)
         self.target_q_net = self._load_pretrained_dqn_model(model_path, action_space=self.ACTION_SPACE_SIZE)
         self.tensorboard = ModifiedTensorBoard(log_dir=f"logs/{self.MODEL_NAME}-{int(time.time())}", profile_batch=0)
@@ -41,8 +41,7 @@ class DQNAgent:
 
         return q_net
 
-    @staticmethod
-    def _load_pretrained_dqn_model(model_path, action_space):
+    def _load_pretrained_dqn_model(self, model_path, action_space):
         model_pretrained = tf.keras.models.load_model(model_path)
         # model = tf.keras.models.load_model(model_path)
         # for layer in model_pretrained.layers[:-5]:
@@ -111,7 +110,9 @@ class DQNAgent:
         self.q_net.set_weights(self.target_q_net.get_weights())
 
     def update_epsilon(self):
-        self.EPSILON *= 0.75
+        if self.EPSILON>self.MIN_EPSILON:
+            self.EPSILON *= 0.95
+            self.EPSILON = max(self.MIN_EPSILON, self.EPSILON)
 
     
     def train(self, batch):
@@ -129,9 +130,9 @@ class DQNAgent:
         max_next_q = np.amax(next_q, axis=1)
 
         for i in range(action_batch.shape[0]):
-            target_q_val = reward_batch[i]
+            target_q_val = reward_batch[i] / 100.0
             if not done_batch[i]:
-                target_q_val += 0.997 * max_next_q[i] # discount
+                target_q_val += 0.9975 * max_next_q[i] # discount
             target_q[i][action_batch[i]] = target_q_val
 
         training_history = self.q_net.fit(x=state_batch, y= target_q, verbose=0, callbacks=[self.tensorboard])

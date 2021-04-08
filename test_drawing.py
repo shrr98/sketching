@@ -8,7 +8,7 @@ if __name__ == "__main__":
     config.gpu_options.allow_growth = True
     sess = tf.compat.v1.Session(config=config)
     model = tf.keras.models.load_model("model/0405_newest4.h5")
-    env = DrawingEnvironment("datasets/")
+    env = DrawingEnvironment("examples/")
     SAVE_VIDEO = True
     # if SAVE_VIDEO:
     #     fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -16,7 +16,7 @@ if __name__ == "__main__":
     
     # print(observation[0].shape, observation[1].shape)
     rewards = []
-    for n in range(20):
+    for n in range(5):
         total_reward = 0
         env.reset()
         observation = env.get_observation()
@@ -25,6 +25,7 @@ if __name__ == "__main__":
             pred = model.predict(observation)
             # print(pred.tolist())
             action = np.argmax(pred)
+            print(action)
             new_observation, reward, done = env.step(action=action)
             observation = new_observation
             total_reward += reward

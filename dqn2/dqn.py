@@ -1,8 +1,7 @@
-from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPooling2D, Activation, Flatten
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras import Model
 from collections import deque
 import numpy as np
 import random
@@ -10,30 +9,16 @@ import time
 import tensorflow as tf
 from tqdm import tqdm
 import os
-from PIL import Image
 import cv2
-from environment.drawing_env import DrawingEnvironment
 
 DISCOUNT = 0.99
-REPLAY_MEMORY_SIZE = 50_000  # How many last steps to keep for model training
+REPLAY_MEMORY_SIZE = 20_000  # How many last steps to keep for model training
 MIN_REPLAY_MEMORY_SIZE = 1_000  # Minimum number of steps in a memory to start training
-MINIBATCH_SIZE = 128  # How many steps (samples) to use for training
+MINIBATCH_SIZE = 512  # How many steps (samples) to use for training
 UPDATE_TARGET_EVERY = 5  # Terminal states (end of episodes)
 MODEL_NAME = '2x256'
-MIN_REWARD = -200  # For model save
-MEMORY_FRACTION = 0.20
 
-# Environment settings
-EPISODES = 20
-
-# Exploration settings
-epsilon = 1  # not a constant, going to be decayed
-EPSILON_DECAY = 0.99975
-MIN_EPSILON = 0.001
-
-#  Stats settings
-AGGREGATE_STATS_EVERY = 50  # episodes
-SHOW_PREVIEW = False
+ACTION_SPACE_SIZE=242
 
 
 ######################################################################
@@ -86,13 +71,12 @@ class ModifiedTensorBoard(TensorBoard):
 ##                              DQN AGENT                           ##
 ######################################################################
 class DQNAgent:
-    def __init__(self):
+    def __init__(self, model_path):
         # main model : this is what we train every step
-        self.model = self.create_model()
+        self.model = self._load_pretrained_dqn_model(model_path, action_space=ACTION_SPACE_SIZE)
 
         # target model : this is what we .predict against every step
-        self.target_model = self.create_model()
-        self.target_model.set_weights(self.model.get_weights())
+        self.target_model = self._load_pretrained_dqn_model(model_path, action_space=ACTION_SPACE_SIZE)
 
         # how we keep the agent consistent taking step with the model over time -> prediction consistency
         # this will save REPLAY_MEMORY_SIZE steps
@@ -103,9 +87,33 @@ class DQNAgent:
         self.target_update_counter = 0
 
 
-    def create_model(self):
+    # def create_model(self):
+    #     model = Sequential()
+    #     model.add(Conv2D(256, (3,3), input_shape=env.OBSERVATION_SPACE_VALUES))
+    #     model.add(Activation("relu"))
+    #     model.add(MaxPooling2D(2,2))
+    #     model.add(Dropout(0.2))
+
+    #     model.add(Conv2D(256, (3,3)))
+    #     model.add(Activation("relu"))
+    #     model.add(MaxPooling2D(2,2))
+    #     model.add(Dropout(0.2))
+
+    #     model.add(Flatten())
+    #     model.add(Dense(64))
+
+    #     model.add(Dense(env.ACTION_SPACE_SIZE, activation="linear"))        
+    #     model.compile(loss="mse", optimizer=Adam(lr=0.001), metrics=['accuracy'])
+
+    #     return model
+
+    
+    @staticmethod
+    def _load_pretrained_dqn_model(model_path, action_space):
         model_pretrained = tf.keras.models.load_model(model_path)
         # model = tf.keras.models.load_model(model_path)
+        # for layer in model_pretrained.layers[:-5]:
+        #     layer.trainable = False
 
         x = model_pretrained.layers[-2].output
 
@@ -116,45 +124,72 @@ class DQNAgent:
         
         return model
 
-
     def update_replay_memory(self, transition):
         #transition is observation space, reward, action space (?)
         self.replay_memory.append(transition)
 
+    def sample_gameplay_batch(self):
+        """
+        Samples a batch of gameplay experiences for training purposes.
+
+        :return: a list of gameplay experiences
+        """
+        batch_size = min(MINIBATCH_SIZE, len(self.replay_memory))
+        sampled_gameplay_batch = random.sample(self.replay_memory, batch_size)
+
+        state_global_patches = []
+        state_local_patches = []
+        next_state_global_patches = []
+        next_state_local_patches = []
+        action_batch = []
+        reward_batch = []
+        done_batch = []
+
+        for gameplay_experience in sampled_gameplay_batch:
+            state_global_patches.append(gameplay_experience[0][0])
+            state_local_patches.append(gameplay_experience[0][1])
+            next_state_global_patches.append(gameplay_experience[1][0])
+            next_state_local_patches.append(gameplay_experience[1][1])
+            reward_batch.append(gameplay_experience[2])
+            action_batch.append(gameplay_experience[3])
+            done_batch.append(gameplay_experience[4])
+        
+        # STATE BATCH
+        global_patches = np.stack(state_global_patches, axis=0).squeeze()
+        local_patches = np.stack(state_local_patches, axis=0).squeeze()
+        state_batch = [global_patches, local_patches]
+
+
+        # NEXT STATE BATCH
+        global_patches = np.stack(next_state_global_patches, axis=0).squeeze()
+        local_patches = np.stack(next_state_local_patches, axis=0).squeeze()
+        next_state_batch = [global_patches, local_patches]
+
+        return (state_batch, next_state_batch, np.array(action_batch),
+                np.array(reward_batch), np.array(done_batch))
+
     def get_qs(self, state):
-        return self.model.predict(np.array(state).reshape(-1, *state.shape)/255)[0] # * : unpacking shape
+        return self.model.predict(state)[0] # * : unpacking shape
 
     def train(self, terminal_state, step):
         if len(self.replay_memory) < MIN_REPLAY_MEMORY_SIZE:
             return
 
-        minibatch = random.sample(self.replay_memory, MINIBATCH_SIZE)
+        state_batch, next_state_batch, action_batch, reward_batch, done_batch  = self.sample_gameplay_batch()
 
-        current_states = np.array([transition[0] for transition in minibatch])/255
-        current_qs_list = self.model.predict(current_states)
+        current_qs_list = self.model.predict(state_batch)
 
-        # after taking action
-        new_current_states = np.array([transition[3] for transition in minibatch])/255
+        future_qs_list = self.target_model.predict(next_state_batch)
 
-        future_qs_list = self.target_model.predict(new_current_states)
+        max_future_qs = np.amax(future_qs_list, axis=1)
 
-        X = [] # images taken from the game
-        y = [] # action that we decide to take
+        for i in range(action_batch.shape[0]):
+            target_q_val = reward_batch[i] / 100.0
+            if not done_batch[i]:
+                target_q_val += 0.997 * max_future_qs[i] # discount
+            current_qs_list[i][action_batch[i]] = target_q_val
 
-        for index, (current_state, action, reward, new_current_state, done) in enumerate(minibatch): # this is why new current_states is on index 3
-            if not done:
-                max_future_q = np.max(future_qs_list[index])
-                new_q = reward + DISCOUNT * max_future_q
-            else:
-                new_q = reward
-
-            current_qs = current_qs_list[index]
-            current_qs[action] = new_q
-
-            X.append(current_state)
-            y.append(current_qs)
-
-        self.model.fit(np.array(X)/255, np.array(y), batch_size=MINIBATCH_SIZE, verbose=0, \
+        self.model.fit(x=state_batch, y= current_qs_list, batch_size=MINIBATCH_SIZE, verbose=0, \
             shuffle=False, callbacks=[self.tensorboard] if terminal_state else None)
 
         

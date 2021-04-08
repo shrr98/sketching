@@ -80,9 +80,9 @@ class DrawingEnvironment:
 
         self.last_similarity = similarity
 
-        if self.episode_step >= self.MAX_STEP or similarity/(255*255) <= self.GOAL_SIMILARITY_THRESH:
+        if self.episode_step >= self.MAX_STEP or similarity/(84*84) <= self.GOAL_SIMILARITY_THRESH:
             done = True
-            if similarity/(255*255) <= self.GOAL_SIMILARITY_THRESH:
+            if similarity/(84*84) <= self.GOAL_SIMILARITY_THRESH:
                 reward = 100
 
         return new_observation, reward, done
@@ -94,9 +94,10 @@ class DrawingEnvironment:
         reward_pixel =  self.last_similarity - current_similarity
         reward = reward_pixel
         
-        if step_taken["pen_state"]==0 or ((abs(step_taken["x"]) < 5 and abs(step_taken["y"]) < 5)) or reward < 5:
+        if step_taken["pen_state"]==0:
             reward += self.PENALTY_STEP 
-
+        elif ((abs(step_taken["x"]) < 5 and abs(step_taken["y"]) < 5)):
+            reward += (5 - max(step_taken["x"], step_taken["y"]))/5 * self.PENALTY_STEP
         return reward
             
     def show(self):
@@ -127,6 +128,22 @@ class DrawingEnvironment:
                         (np.hstack((ref, canvas)),
                         np.hstack((distance_map, color_map)))
             )
+
+            images = cv2.resize(images, (3*84*2, 3*84*2))
             cv2.imshow('Current State', images)
             cv2.waitKey(1)
             return images
+
+    def get_random_action(self):
+        pen_position = self.drawer.get_pen_position()
+        pen_state = np.random.randint(0, 2)
+        x_left = min(5, pen_position[0])
+        x_right = max(83-5, pen_position[0])
+
+        y_top = min(5, pen_position[1])
+        y_bot = max(83-5, pen_position[1])
+
+        x = np.random.randint(-x_left, 84-x_right)
+        y = np.random.randint(-y_top, 84-y_bot)
+
+        return position_to_action((x,y), pen_state, 11)
