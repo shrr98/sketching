@@ -7,8 +7,8 @@ if __name__ == "__main__":
     config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.compat.v1.Session(config=config)
-    model = tf.keras.models.load_model("exp/0408_11x11_.h5")
-    env = DrawingEnvironment("examples/")
+    model = tf.keras.models.load_model("models/dqn_new4_rewardterbarubanget_1617901178___422.76max__-81.97avg_-797.39min.h5")
+    env = DrawingEnvironment("datasets/")
     SAVE_VIDEO = True
     # if SAVE_VIDEO:
     #     fourcc = cv2.VideoWriter_fourcc(*'XVID')

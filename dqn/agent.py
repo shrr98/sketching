@@ -17,7 +17,7 @@ class DQNAgent:
         self.ACTION_SPACE_SIZE = 242
         self.MIN_EPSILON = 0.01
         self.EPSILON = 0.1
-        self.MODEL_NAME = "dqn_new4_rewardbaru"
+        self.MODEL_NAME = "dqn_new4_rewardterbarubanget2"
         self.q_net = self._load_pretrained_dqn_model(model_path, action_space=self.ACTION_SPACE_SIZE)
         self.target_q_net = self._load_pretrained_dqn_model(model_path, action_space=self.ACTION_SPACE_SIZE)
         self.tensorboard = ModifiedTensorBoard(log_dir=f"logs/{self.MODEL_NAME}-{int(time.time())}", profile_batch=0)
@@ -53,6 +53,8 @@ class DQNAgent:
         model = Model(inputs=model_pretrained.inputs, outputs=outputs)
         
         model.compile(loss="mse", optimizer=tf.keras.optimizers.Adam(lr=0.001), metrics=['accuracy'])
+
+        # tf.keras.utils.plot_model(model, "dqn_model.png", show_shapes=True)
         
         return model
 
@@ -130,7 +132,7 @@ class DQNAgent:
         max_next_q = np.amax(next_q, axis=1)
 
         for i in range(action_batch.shape[0]):
-            target_q_val = reward_batch[i] / 100.0
+            target_q_val = reward_batch[i]
             if not done_batch[i]:
                 target_q_val += 0.9975 * max_next_q[i] # discount
             target_q[i][action_batch[i]] = target_q_val

@@ -134,6 +134,9 @@ class DrawingEnvironment:
             cv2.waitKey(1)
             return images
 
+    def close_show(self):
+        cv2.destroyAllWindows()
+
     def get_random_action(self):
         pen_position = self.drawer.get_pen_position()
         pen_state = np.random.randint(0, 2)

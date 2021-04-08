@@ -13,7 +13,7 @@ import numpy as np
 import time
 from tqdm import tqdm
 
-def evaluate_training_result(env, agent):
+def evaluate_training_result(env, agent, show=False, episodes=10):
     """
     Evaluates the performance of the current DQN agent by using it to play a
     few episodes of the game and then calculates the average reward it gets.
@@ -23,7 +23,7 @@ def evaluate_training_result(env, agent):
     :return: average reward across episodes
     """
     rewards = []
-    episodes_to_play = 10
+    episodes_to_play = episodes
     for i in range(episodes_to_play):
         state = env.reset()
         done = False
@@ -33,12 +33,16 @@ def evaluate_training_result(env, agent):
             next_state, reward, done = env.step(action)
             episode_reward += reward
             state = next_state
+            if show:
+                env.show()
         rewards.append(episode_reward)
+    if show:
+        env.close_show()
     average_reward = np.mean(rewards)
     return average_reward
 
 
-def collect_gameplay_experiences(env, agent, buffer):
+def collect_gameplay_experiences(env, agent, buffer, ontrain=True):
     """
     Collects gameplay experiences by playing env with the instructions
     produced by agent and stores the gameplay experiences in buffer.
@@ -49,11 +53,12 @@ def collect_gameplay_experiences(env, agent, buffer):
     """
     state = env.reset()
     done = False
-    # observations = []
+    observations = []
     total_reward = 0
     last_rewards = [0,0,0,0,0]
+    last_positions = [(-1,-1) for _ in range(5)]
     while not done:
-        action = agent.collect_policy(state)
+        action = agent.policy(state)
         # israndom = np.mean(last_rewards) <= -5
         # # if the pen is stuck
         # if israndom:
@@ -62,23 +67,38 @@ def collect_gameplay_experiences(env, agent, buffer):
         #     last_rewards = [0,0,0,0,0]
 
         next_state, reward, done = env.step(action)
+        
+        ## Stuck by position
+        curr_position = env.drawer.get_pen_position()
+        if (reward == -5 and curr_position in last_positions) or \
+            (reward<=0 and len([x for x in last_positions if x==curr_position])>=2):
+            action = env.get_random_action()
+            # last_positions = [(-1,-1) for _ in range(5)]
+            state = next_state
+            next_state, reward, done = env.step(action)
+
+
+        last_positions.pop(0)
+        last_positions.append(curr_position)
+
         # last_rewards.pop(0)
         # last_rewards.append(reward)
         total_reward += reward
-        # observations.append((state, next_state, reward, action, done))
+        observations.append((state, next_state, reward, action, done))
         # if not israndom:
-        buffer.store_gameplay_experience(state, next_state,
-                                        reward, action, done)
+        # buffer.store_gameplay_experience(state, next_state,
+        #                                 reward, action, done)
         state = next_state
         # env.show()
         # print("action: {} | reward: {}".format(action, reward))
 
     print("Train reward : {}".format(total_reward), end = ' | ')
-    # if total_reward <= - 500:
-    #     return
-    # for state, next_state, reward, action, done in observations:
-    #     buffer.store_gameplay_experience(state, next_state,
-    #                                      reward, action, done)
+    if ontrain and total_reward <= - 500:
+        return
+    
+    for state, next_state, reward, action, done in observations:
+        buffer.store_gameplay_experience(state, next_state,
+                                         reward, action, done)
 def plot(losses, rewards):
 
     eps = range(len(losses))
@@ -100,6 +120,9 @@ def train_model(max_episodes=50000):
     """
     AGGREGATE_STATS_EVERY = 20
     REDUCE_EPSILON_EVERY = 50
+    SHOW_EVERY = 50
+    SHOW_RENDER = True
+
     agent = DQNAgent(model_path="model/0405_newest4.h5")
     buffer = ReplayBuffer()
     env = DrawingEnvironment("datasets/")
@@ -107,9 +130,9 @@ def train_model(max_episodes=50000):
     avg_rewards = []
     MAX_AVG_REWARD = -2000
     for _ in range(100):
-        collect_gameplay_experiences(env, agent, buffer)
-
-    # agent.EPSILON = 0.5
+        collect_gameplay_experiences(env, agent, buffer, ontrain=False)
+    # return
+    agent.EPSILON = 0.0
     for episode_cnt in tqdm(range(1, max_episodes+1), ascii=True, unit = "episode"):
         agent.tensorboard.step = episode_cnt
         collect_gameplay_experiences(env, agent, buffer)
@@ -146,7 +169,10 @@ def train_model(max_episodes=50000):
             # Save model, but only when min reward is greater or equal a set value
             # if min_reward >= -500:
             agent.q_net.save(f'models/{agent.MODEL_NAME}_{int(time.time())}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min.h5')
-
+        
+        if SHOW_RENDER and episode_cnt % SHOW_EVERY==0:
+            r = evaluate_training_result(env, agent, show=True, episodes=1)
+            print("\nShowing... Reward: {}\n".format(r))
     plot(loss, avg_rewards)
 
 import tensorflow as tf

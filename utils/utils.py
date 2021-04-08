@@ -9,12 +9,12 @@ def pixel_similarity(reference, canvas):
     :return: similarity value (float)
     """
 
-    # reference *= 255
-    # canvas *= 255
+    reference *= 255
+    canvas *= 255
     L = reference.shape[0]
     diff_square = np.subtract(reference, canvas)**2
     similarity = np.sum(diff_square)
-    # similarity = np.sum(diff_square) / L**2
+    similarity = np.sum(diff_square) / L**2
 
     return similarity
 
