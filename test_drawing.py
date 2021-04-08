@@ -7,7 +7,7 @@ if __name__ == "__main__":
     config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.compat.v1.Session(config=config)
-    model = tf.keras.models.load_model("model/0405_newest4.h5")
+    model = tf.keras.models.load_model("exp/0408_11x11_.h5")
     env = DrawingEnvironment("examples/")
     SAVE_VIDEO = True
     # if SAVE_VIDEO:

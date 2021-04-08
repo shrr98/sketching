@@ -128,7 +128,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         num_strokes = 0
         max_strokes = np.random.randint(self.min_strokes, self.max_strokes, 1)[0]
         for i in range(self.num_data):
-            if num_strokes>max_strokes//3 and num_strokes<2*max_strokes//3 and np.random.random() > 0.95: # move pen to edge, to overcome stuck at edge
+            if num_strokes>max_strokes//6*3 and num_strokes<2*max_strokes//6*4 and np.random.random() > 0.9: # move pen to edge, to overcome stuck at edge
                 edge = np.random.randint(0,5)
                 x_p, y_p = np.random.randint(0, 84, 2)
                 if edge==0: # pojok kiri
@@ -180,8 +180,9 @@ class RandomStrokeGenerator(keras.utils.Sequence):
                         y.append(action_done['action_real'])
                         if num_strokes == max_strokes-1:
                             break
-
-            action_done = drawer.do_action(self.get_random_action(drawer.get_pen_position()))
+            
+            pen = 1 if np.random.rand() >0.8 else 0
+            action_done = drawer.do_action(self.get_random_action(drawer.get_pen_position(),pen))
             if drawer.get_pen_position() not in last_position:
                 num_strokes += 1
                 color_maps.append(drawer.get_color_map())
@@ -254,9 +255,10 @@ class RandomStrokeGenerator(keras.utils.Sequence):
 if __name__ == "__main__":
     gen = RandomStrokeGenerator(batch_size=8,
                                      num_data=484, 
-                                     min_strokes=32, 
-                                     max_strokes=64, 
-                                     jumping_rate=0)
+                                     min_strokes=8, 
+                                     max_strokes=32, 
+                                     jumping_rate=0.1,
+                                     max_jumping_step=21)
 
     # moves = gen.randomize_pen_jumping((80,80), 84, 5)
 
