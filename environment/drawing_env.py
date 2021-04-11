@@ -94,10 +94,10 @@ class DrawingEnvironment:
         reward_pixel =  self.last_similarity - current_similarity
         reward = reward_pixel
         
-        if step_taken["pen_state"]==0:
+        if step_taken["pen_state"]==0 or abs(reward_pixel)<1:
             reward += self.PENALTY_STEP 
-        elif ((abs(step_taken["x"]) < 5 and abs(step_taken["y"]) < 5)):
-            reward += (5 - max(step_taken["x"], step_taken["y"]))/5 * self.PENALTY_STEP
+        # elif ((abs(step_taken["x"]) < 5 and abs(step_taken["y"]) < 5)):
+        #     reward += (5 - max(step_taken["x"], step_taken["y"]))/5 * self.PENALTY_STEP
         return reward
             
     def show(self):
