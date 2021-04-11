@@ -13,6 +13,9 @@ import numpy as np
 import time
 from tqdm import tqdm
 
+THRESHOLD_REWARD = -2000
+THRESHOLD_REWARD_ANNEALING = 20
+
 def evaluate_training_result(env, agent, show=False, episodes=10):
     """
     Evaluates the performance of the current DQN agent by using it to play a
@@ -56,7 +59,7 @@ def collect_gameplay_experiences(env, agent, buffer, ontrain=True):
     observations = []
     total_reward = 0
     last_rewards = [0,0,0,0,0]
-    last_positions = [(-1,-1) for _ in range(5)]
+    last_positions = [(-5,-5) for _ in range(5)]
     while not done:
         action = agent.policy(state)
         # israndom = np.mean(last_rewards) <= -5
@@ -76,7 +79,12 @@ def collect_gameplay_experiences(env, agent, buffer, ontrain=True):
             # last_positions = [(-1,-1) for _ in range(5)]
             state = next_state
             next_state, reward, done = env.step(action)
-
+            pos = last_positions.index(curr_position)
+            for i in range(5, pos+1, -1):
+                observations.pop(-1)
+                last_positions.pop(-1)
+                
+            last_positions = [(-5,-5) for _ in range(5, pos+1, -1)] + last_positions
 
         last_positions.pop(0)
         last_positions.append(curr_position)
@@ -93,7 +101,7 @@ def collect_gameplay_experiences(env, agent, buffer, ontrain=True):
         # print("action: {} | reward: {}".format(action, reward))
 
     print("Train reward : {}".format(total_reward), end = ' | ')
-    if ontrain and total_reward <= - 500:
+    if ontrain and total_reward <= THRESHOLD_REWARD:
         return
     
     for state, next_state, reward, action, done in observations:
@@ -118,10 +126,12 @@ def train_model(max_episodes=50000):
     Trains a DQN agent to play the CartPole game by trial and error
     :return: None
     """
+    global THRESHOLD_REWARD, THRESHOLD_REWARD_ANNEALING
     AGGREGATE_STATS_EVERY = 20
-    REDUCE_EPSILON_EVERY = 50
+    REDUCE_EPSILON_EVERY = max_episodes
     SHOW_EVERY = 50
     SHOW_RENDER = True
+    UPDATE_TARGET_EVERY=500
 
     agent = DQNAgent(model_path="model/0405_newest4.h5")
     buffer = ReplayBuffer()
@@ -152,6 +162,10 @@ def train_model(max_episodes=50000):
         
         if episode_cnt % REDUCE_EPSILON_EVERY == 0:
             agent.update_epsilon()
+            THRESHOLD_REWARD += THRESHOLD_REWARD_ANNEALING
+        
+        if episode_cnt % UPDATE_TARGET_EVERY==0:
+            agent.update_target_network()
 
         if episode_cnt % AGGREGATE_STATS_EVERY == 0:            
             average_reward = sum(avg_rewards[-AGGREGATE_STATS_EVERY:])/len(avg_rewards[-AGGREGATE_STATS_EVERY:])
@@ -159,7 +173,7 @@ def train_model(max_episodes=50000):
             max_reward = max(avg_rewards[-AGGREGATE_STATS_EVERY:])
             agent.tensorboard.update_stats(reward_avg=average_reward, reward_min=min_reward, reward_max=max_reward)
 
-            agent.update_target_network()
+            # agent.update_target_network()
 
             # if average_reward >= MAX_AVG_REWARD:    
             #     MAX_AVG_REWARD = average_reward
