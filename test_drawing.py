@@ -7,8 +7,9 @@ if __name__ == "__main__":
     config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.compat.v1.Session(config=config)
-    model = tf.keras.models.load_model("models/dqn_new4_rewardterbarubanget_1617901178___422.76max__-81.97avg_-797.39min.h5")
-    env = DrawingEnvironment("datasets/")
+    # model = tf.keras.models.load_model("models/dqn_newest4_30000_update10000_lrdecay_01300__0944.82max_0215.12avg_-292.56min.h5")
+    model = tf.keras.models.load_model("model/dummy_edge_nostuck2.h5")
+    env = DrawingEnvironment("examples/")
     SAVE_VIDEO = True
     # if SAVE_VIDEO:
     #     fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -16,9 +17,10 @@ if __name__ == "__main__":
     
     # print(observation[0].shape, observation[1].shape)
     rewards = []
-    for n in range(5):
+    for n in range(1):
         total_reward = 0
         env.reset()
+        # env.drawer.set_pen_position((41,41))
         observation = env.get_observation()
         for i in range(500):
             # action = np.random.randint(0, 242)

@@ -13,7 +13,7 @@ import numpy as np
 import time
 from tqdm import tqdm
 
-THRESHOLD_REWARD = -2000
+THRESHOLD_REWARD = -3000
 THRESHOLD_REWARD_ANNEALING = 20
 
 def evaluate_training_result(env, agent, show=False, episodes=10):
@@ -28,7 +28,9 @@ def evaluate_training_result(env, agent, show=False, episodes=10):
     rewards = []
     episodes_to_play = episodes
     for i in range(episodes_to_play):
-        state = env.reset()
+        env.reset()
+        env.drawer.set_pen_position((41,41))
+        state = env.get_observation()
         done = False
         episode_reward = 0.0
         while not done:
@@ -54,7 +56,9 @@ def collect_gameplay_experiences(env, agent, buffer, ontrain=True):
     :param buffer: the replay buffer
     :return: None
     """
-    state = env.reset()
+    env.reset()
+    env.drawer.set_pen_position((41,41))
+    state = env.get_observation()
     done = False
     observations = []
     total_reward = 0
@@ -80,27 +84,29 @@ def collect_gameplay_experiences(env, agent, buffer, ontrain=True):
             state = next_state
             next_state, reward, done = env.step(action)
             pos = last_positions.index(curr_position)
-            for i in range(5, pos+1, -1):
+            for i in range(5, pos, -1):
                 observations.pop(-1)
                 last_positions.pop(-1)
                 
-            last_positions = [(-5,-5) for _ in range(5, pos+1, -1)] + last_positions
-
+            last_positions = [(-5,-5) for _ in range(5, pos, -1)] + last_positions
+            
         last_positions.pop(0)
         last_positions.append(curr_position)
 
         # last_rewards.pop(0)
         # last_rewards.append(reward)
         total_reward += reward
+        if done and reward<100:
+            reward = -100
         observations.append((state, next_state, reward, action, done))
         # if not israndom:
         # buffer.store_gameplay_experience(state, next_state,
         #                                 reward, action, done)
         state = next_state
-        # env.show()
+        env.show()
         # print("action: {} | reward: {}".format(action, reward))
 
-    print("Train reward : {}".format(total_reward), end = ' | ')
+    print("Train reward : {}".format(total_reward), end=' | ')
     if ontrain and total_reward <= THRESHOLD_REWARD:
         return
     
@@ -127,24 +133,25 @@ def train_model(max_episodes=50000):
     :return: None
     """
     global THRESHOLD_REWARD, THRESHOLD_REWARD_ANNEALING
-    AGGREGATE_STATS_EVERY = 20
+    AGGREGATE_STATS_EVERY = 100
     REDUCE_EPSILON_EVERY = max_episodes
-    SHOW_EVERY = 50
+    SHOW_EVERY = 1000
     SHOW_RENDER = True
-    UPDATE_TARGET_EVERY=500
+    UPDATE_TARGET_EVERY=10000
 
-    agent = DQNAgent(model_path="model/0405_newest4.h5")
+    target_name = "dqn_newest4_30000_update10000_lrdecay"
+    agent = DQNAgent(target_name, model_path="model/0405_newest4.h5")
     buffer = ReplayBuffer()
     env = DrawingEnvironment("datasets/")
     loss = []
     avg_rewards = []
     MAX_AVG_REWARD = -2000
-    for _ in range(100):
-        collect_gameplay_experiences(env, agent, buffer, ontrain=False)
-    # return
+    for _ in range(1):
+        collect_gameplay_experiences(env, agent, buffer, ontrain=True)
+    return
     agent.EPSILON = 0.0
     for episode_cnt in tqdm(range(1, max_episodes+1), ascii=True, unit = "episode"):
-        agent.tensorboard.step = episode_cnt
+        agent.tensorboard.step = episode_cnt-2
         collect_gameplay_experiences(env, agent, buffer)
         gameplay_experience_batch = buffer.sample_gameplay_batch()
         loss = loss + agent.train(gameplay_experience_batch)
@@ -154,6 +161,7 @@ def train_model(max_episodes=50000):
               'loss={3}'.format(episode_cnt, max_episodes,
                                    avg_rewards[-1], loss[-1]))
         
+        agent.tensorboard.update_stats(reward_eps=avg_reward)
         # if episode_cnt % AGGREGATE_STATS_EVERY == 0:
         #     if avg_rewards[-1]>-1000:
         #         agent.update_target_network()
@@ -171,8 +179,9 @@ def train_model(max_episodes=50000):
             average_reward = sum(avg_rewards[-AGGREGATE_STATS_EVERY:])/len(avg_rewards[-AGGREGATE_STATS_EVERY:])
             min_reward = min(avg_rewards[-AGGREGATE_STATS_EVERY:])
             max_reward = max(avg_rewards[-AGGREGATE_STATS_EVERY:])
+            agent.tensorboard.step = episode_cnt-2
             agent.tensorboard.update_stats(reward_avg=average_reward, reward_min=min_reward, reward_max=max_reward)
-
+            agent.lr_decay(episode_cnt)
             # agent.update_target_network()
 
             # if average_reward >= MAX_AVG_REWARD:    
@@ -182,7 +191,7 @@ def train_model(max_episodes=50000):
             #     agent.rollback_network()
             # Save model, but only when min reward is greater or equal a set value
             # if min_reward >= -500:
-            agent.q_net.save(f'models/{agent.MODEL_NAME}_{int(time.time())}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min.h5')
+            agent.q_net.save(f'models/{target_name}_{episode_cnt:0>5d}__{max_reward:0>7.2f}max_{average_reward:0>7.2f}avg_{min_reward:0>7.2f}min.h5')
         
         if SHOW_RENDER and episode_cnt % SHOW_EVERY==0:
             r = evaluate_training_result(env, agent, show=True, episodes=1)
@@ -195,4 +204,4 @@ config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth=True
 sess = tf.compat.v1.Session(config=config)
 
-train_model(max_episodes=1000)
+train_model(max_episodes=30000)

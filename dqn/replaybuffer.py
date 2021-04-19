@@ -32,7 +32,7 @@ class ReplayBuffer:
 
         :return: a list of gameplay experiences
         """
-        batch_size = min(512, len(self.gameplay_experiences))
+        batch_size = min(256, len(self.gameplay_experiences))
         sampled_gameplay_batch = random.sample(self.gameplay_experiences, batch_size)
 
         state_global_patches = []

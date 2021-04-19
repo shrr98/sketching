@@ -6,6 +6,7 @@ from tensorflow.python.keras.layers import Dense, Activation
 from tensorflow.python.keras.optimizers import Adam
 import time
 from dqn.modifiedtb import ModifiedTensorBoard
+import math
 
 class DQNAgent:
     """
@@ -13,11 +14,11 @@ class DQNAgent:
     should eventually learn how to play the game.
     """
 
-    def __init__(self, model_path=None):
+    def __init__(self, target_name, model_path=None):
         self.ACTION_SPACE_SIZE = 242
         self.MIN_EPSILON = 0.01
         self.EPSILON = 0.1
-        self.MODEL_NAME = "dqn_new4_rewardterbarubanget2"
+        self.MODEL_NAME = target_name
         self.q_net = self._load_pretrained_dqn_model(model_path, action_space=self.ACTION_SPACE_SIZE)
         self.target_q_net = self._load_pretrained_dqn_model(model_path, action_space=self.ACTION_SPACE_SIZE)
         self.tensorboard = ModifiedTensorBoard(log_dir=f"logs/{self.MODEL_NAME}-{int(time.time())}", profile_batch=0)
@@ -37,7 +38,7 @@ class DQNAgent:
         q_net.add(Dense(32, activation='relu', kernel_initializer='he_uniform'))
         q_net.add(Dense(2, activation='linear', kernel_initializer='he_uniform'))
 
-        q_net.compile(optimizer=Adam(learning_rate=0.001), loss='mse', metrics=["accuracy"])
+        q_net.compile(optimizer=Adam(learning_rate=0.0003), loss='mse', metrics=["accuracy"])
 
         return q_net
 
@@ -93,6 +94,20 @@ class DQNAgent:
         action = np.argmax(action_q.numpy()[0], axis=0)
         return action
 
+    def policy_target(self, state):
+        """
+        Takes a state from the game environment and returns
+        an action that has the highest Q value and should be taken
+        as the next step.
+
+        :param state: the current game environment state
+        :return: an action
+        """
+        # state_input = tf.convert_to_tensor(state[None, :], dtype=tf.float32)
+        action_q = self.target_q_net(state)
+        action = np.argmax(action_q.numpy()[0], axis=0)
+        return action
+
     def update_target_network(self):
         """
         Updates the current target_q_net with the q_net which brings all the
@@ -116,7 +131,14 @@ class DQNAgent:
             self.EPSILON *= 0.95
             self.EPSILON = max(self.MIN_EPSILON, self.EPSILON)
 
-    
+    def lr_decay(self, epoch):
+        initial_lrate = 0.001
+        drop = 0.3
+        epochs_drop = 1000.0
+        lrate = initial_lrate * math.pow(drop,  
+                math.floor((1+epoch)/epochs_drop))
+        tf.keras.backend.set_value(self.q_net.optimizer.learning_rate, lrate)
+
     def train(self, batch):
         """
         Trains the underlying network with a batch of gameplay experiences to
