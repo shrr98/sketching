@@ -111,6 +111,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
     def generate(self):
         drawer = Drawer()
         drawer.reset()
+        drawer.pen_state = 1
 
         actions = np.random.randint(drawer.ACTION_SPACE_SIZE//2, drawer.ACTION_SPACE_SIZE, self.num_data)
         
@@ -124,12 +125,14 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         X = []
         patches = []
         pen_positions = []
-        last_position = [drawer.get_pen_position(), drawer.get_pen_position(), drawer.get_pen_position()]
+        # last_position = [drawer.get_pen_position(), drawer.get_pen_position(), drawer.get_pen_position()]
+        last_position = [(-5,-5) for _ in range(5)]
+
         num_strokes = 0
         max_strokes = np.random.randint(self.min_strokes, self.max_strokes)
         jumped = False
         for i in range(self.num_data):
-            if num_strokes>max_strokes//6*3 and num_strokes<2*max_strokes//6*4 and np.random.random() > 0.8 and drawer.pen_state==1: # move pen to edge, to overcome stuck at edge
+            if num_strokes>max_strokes//6*3 and num_strokes<2*max_strokes//6*4 and np.random.random() > 0.95 and drawer.pen_state==1: # move pen to edge, to overcome stuck at edge
                 edge = np.random.randint(0,5)
                 x_p, y_p = np.random.randint(0, 84, 2)
                 if edge==0: # pojok kiri
@@ -152,7 +155,8 @@ class RandomStrokeGenerator(keras.utils.Sequence):
                 c = drawer.get_color_map()
                 d = drawer.get_distance_map()
                 can = drawer.get_canvas()
-                p = drawer.get_patch()
+                pat = drawer.get_patch()
+                p = drawer.get_pen_position()
 
                 action = self.get_random_action((x_p, y_p))
                 
@@ -162,19 +166,20 @@ class RandomStrokeGenerator(keras.utils.Sequence):
                     num_strokes += 1
                     color_maps.append(c)
                     distance_maps.append(d)
-                    pen_positions.append(drawer.get_pen_position())
+                    pen_positions.append(p)
                     canvases.append(can)
-                    canv_patches.append(p)
+                    canv_patches.append(pat)
                     y.append(action_done["action_real"])
                     last_position.pop(0)
                     last_position.append(drawer.get_pen_position())
                 
 
-            if not jumped and i>actions.shape[0]//3*2 and drawer.pen_state == 1 and num_strokes < max_strokes-1 and np.random.random(1)[0] <= self.jumping_rate:
+            # if not jumped and i>actions.shape[0]//3*2 and drawer.pen_state == 1 and num_strokes < max_strokes-1 and np.random.random(1)[0] <= self.jumping_rate:
+            if not jumped and drawer.pen_state == 1 and num_strokes < max_strokes-1 and np.random.random(1)[0] <= self.jumping_rate:
                 jumping_steps = self.get_pen_jumping(drawer.get_pen_position(), drawer.CANVAS_SIZE, drawer.PATCH_SIZE//2)
                 if jumping_steps is not None:   # if jumping
                     # print("jump")
-                    # jumped = True
+                    jumped = True
                     for jump in jumping_steps:
                         num_strokes += 1
                         jump_action = position_to_action(jump, 0, drawer.PATCH_SIZE)
@@ -202,7 +207,8 @@ class RandomStrokeGenerator(keras.utils.Sequence):
             c = drawer.get_color_map()
             d = drawer.get_distance_map()
             can = drawer.get_canvas()
-            p = drawer.get_patch()
+            pat = drawer.get_patch()
+            p = drawer.get_pen_position()
             if drawer.pen_state==1:
                 action_done = drawer.do_action(self.get_random_action(drawer.get_pen_position(),None))
             else:
@@ -212,9 +218,9 @@ class RandomStrokeGenerator(keras.utils.Sequence):
                 num_strokes += 1
                 color_maps.append(c)
                 distance_maps.append(d)
-                pen_positions.append(drawer.get_pen_position())
+                pen_positions.append(p)
                 canvases.append(can)
-                canv_patches.append(p)
+                canv_patches.append(pat)
                 y.append(action_done["action_real"])
 
                 last_position.pop(0)
@@ -237,7 +243,11 @@ class RandomStrokeGenerator(keras.utils.Sequence):
                     patches.append(p)
                 
                 drawer.reset()  # Reset drawer state
-                last_position = [drawer.get_pen_position(), drawer.get_pen_position(), drawer.get_pen_position()]
+                drawer.pen_state = 1
+
+                last_position = [(-5,-5) for _ in range(5)]
+
+                # last_position = [drawer.get_pen_position(), drawer.get_pen_position(), drawer.get_pen_position()]
 
                 # clear all buffers
                 pen_positions.clear()
@@ -264,17 +274,20 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         self.X =  np.squeeze(X)
         self.patches = np.squeeze(patches)
         self.y = np.squeeze(y)
+
     
     def on_epoch_end(self):
         """
         Generate new data at every end of epoch.
         """
+
+        self.generate()
+
         self.epoch += 1
         if self.epoch % self.curr_epoch == 0 and self.max_strokes < self.MAX_STROKES:
             self.min_strokes += self.curr_step
             self.max_strokes += self.curr_step
 
-        self.generate()
 
 
 
@@ -282,16 +295,16 @@ if __name__ == "__main__":
     gen = RandomStrokeGenerator(batch_size=16,
                                      num_data=484, 
                                      min_strokes=32, 
-                                     max_strokes=128, 
-                                     jumping_rate=0.3,
-                                     max_jumping_step=14
+                                     max_strokes=64, 
+                                     jumping_rate=0.1,
+                                     max_jumping_step=41
                                     )
 
     # moves = gen.randomize_pen_jumping((80,80), 84, 5)
 
     print(len(gen))
 
-    for i in range(0,1):
+    for i in range(0,5):
         [X, x], y = gen.__getitem__(i)
         # print(y)
         images = np.hstack((X[0][:,:,0], X[0][:,:,1], X[0][:,:,2], X[0][:,:,3], cv2.resize(x[0][:,:,0], (84,84)), cv2.resize(x[0][:,:,1], (84,84))))
@@ -304,6 +317,6 @@ if __name__ == "__main__":
         # cv2.imwrite("random_images/{}.png".format(i), im)
         cv2.waitKey(0)
 
-    key, val = np.unique(y, return_counts=True, return_index=True)
-    print("\n".join(a for a in zip(key, val)))
+    # key, val = np.unique(y, return_counts=True, return_index=True)
+    # print("\n".join(a for a in zip(key, val)))
         
