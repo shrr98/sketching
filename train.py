@@ -16,7 +16,7 @@ from tqdm import tqdm
 THRESHOLD_REWARD = -3000
 THRESHOLD_REWARD_ANNEALING = 20
 
-def evaluate_training_result(env, agent, show=False, episodes=10):
+def evaluate_training_result(env, agent, show=False, episodes=1):
     """
     Evaluates the performance of the current DQN agent by using it to play a
     few episodes of the game and then calculates the average reward it gets.
@@ -64,6 +64,7 @@ def collect_gameplay_experiences(env, agent, buffer, ontrain=True):
     total_reward = 0
     last_rewards = [0,0,0,0,0]
     last_positions = [(-5,-5) for _ in range(5)]
+    last_action = -5
     while not done:
         action = agent.policy(state)
         # israndom = np.mean(last_rewards) <= -5
@@ -74,16 +75,23 @@ def collect_gameplay_experiences(env, agent, buffer, ontrain=True):
         #     last_rewards = [0,0,0,0,0]
 
         next_state, reward, done = env.step(action)
-        
+
         ## Stuck by position
         curr_position = env.drawer.get_pen_position()
         if (reward == -5 and curr_position in last_positions) or \
             (reward<=0 and len([x for x in last_positions if x==curr_position])>=2):
-            action = env.get_random_action()
+            if action == last_action:
+                env.drawer.set_pen_position(last_positions[-1])
+            if np.random.rand() > 0.5:
+                action = env.get_random_action(pen_state=0)
+            else:
+                action = env.get_action_to_stroke()
             # last_positions = [(-1,-1) for _ in range(5)]
+
             state = next_state
             next_state, reward, done = env.step(action)
             pos = last_positions.index(curr_position)
+            curr_position = env.drawer.get_pen_position()
             for i in range(5, pos, -1):
                 observations.pop(-1)
                 last_positions.pop(-1)
@@ -96,13 +104,18 @@ def collect_gameplay_experiences(env, agent, buffer, ontrain=True):
         # last_rewards.pop(0)
         # last_rewards.append(reward)
         total_reward += reward
-        if done and reward<100:
-            reward = -100
+        # if done and reward<100:
+        #     reward = -100
         observations.append((state, next_state, reward, action, done))
         # if not israndom:
         # buffer.store_gameplay_experience(state, next_state,
         #                                 reward, action, done)
         state = next_state
+
+        last_action = action
+
+
+
         env.show()
         # print("action: {} | reward: {}".format(action, reward))
 
@@ -135,12 +148,13 @@ def train_model(max_episodes=50000):
     global THRESHOLD_REWARD, THRESHOLD_REWARD_ANNEALING
     AGGREGATE_STATS_EVERY = 100
     REDUCE_EPSILON_EVERY = max_episodes
+    
     SHOW_EVERY = 1000
     SHOW_RENDER = True
     UPDATE_TARGET_EVERY=10000
 
-    target_name = "dqn_newest4_30000_update10000_lrdecay"
-    agent = DQNAgent(target_name, model_path="model/0405_newest4.h5")
+    target_name = "0426_dqn_newest4_30000"
+    agent = DQNAgent(target_name, model_path="model/rsg_g1_angle2_edge_nostuck_penupstart3_jump1x41_rarependown_raregen.h5")
     buffer = ReplayBuffer()
     env = DrawingEnvironment("datasets/")
     loss = []

@@ -33,6 +33,7 @@ class Reference(object):
         img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         ret, img = cv2.threshold(img, 120, 255, 0)
         img = 1-(img / 255)
+        # img = img / 255
         self.canvas = np.array(img, dtype=np.float)
 
     def set_canvas(self, canvas):

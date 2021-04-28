@@ -3,7 +3,7 @@ from tensorflow import keras
 from environment.drawer import Drawer
 import math
 import cv2
-from utils.utils import position_to_action
+from utils.utils import position_to_action, action_to_position
 
 class RandomStrokeGenerator(keras.utils.Sequence):
     """
@@ -209,8 +209,8 @@ class RandomStrokeGenerator(keras.utils.Sequence):
             can = drawer.get_canvas()
             pat = drawer.get_patch()
             p = drawer.get_pen_position()
-            if drawer.pen_state==1:
-                action_done = drawer.do_action(self.get_random_action(drawer.get_pen_position(),None))
+            if drawer.pen_state==1 and np.random.rand()>0.7:
+                action_done = drawer.do_action(self.get_random_action(drawer.get_pen_position(),0))
             else:
                 action_done = drawer.do_action(self.get_random_action(drawer.get_pen_position(),1))
 
@@ -275,7 +275,222 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         self.patches = np.squeeze(patches)
         self.y = np.squeeze(y)
 
-    
+
+    def generate2(self):
+        drawer = Drawer()
+        drawer.reset()
+        drawer.pen_state = 1
+
+        ref_drawer = Drawer()
+        ref_drawer.reset()
+
+        angle = np.random.random() * math.pi
+
+        color_maps = []
+        distance_maps = []
+        canvases = []
+        canv_patches = []
+        ref_patches = []
+        ref = None
+        y = []
+        X = []
+        patches = []
+        pen_positions = []
+        # last_position = [drawer.get_pen_position(), drawer.get_pen_position(), drawer.get_pen_position()]
+        last_position = [(-5,-5) for _ in range(5)]
+
+        num_strokes = 0
+        max_strokes = np.random.randint(self.min_strokes, self.max_strokes)
+        jumped = False
+        for i in range(self.num_data):
+            if num_strokes>max_strokes//6*3 and num_strokes<2*max_strokes//6*4 and np.random.random() > 0.95 and drawer.pen_state==1: # move pen to edge, to overcome stuck at edge
+                edge = np.random.randint(0,5)
+                x_p, y_p = np.random.randint(0, 84, 2)
+                if edge==0: # pojok kiri
+                    # x_p = np.random.randint(0, 5)
+                    x_edge =x_p= 0
+                elif edge==1: # pojok kanan
+                    # x_p = np.random.randint(84-5, 84)
+                    x_edge = x_p = 83
+                elif edge==2: # pojok atas
+                    # y_p = np.random.randint(0, 5)
+                    y_edge = y_p = 0
+                else: # pojok bawah
+                    # y_p = np.random.randint(84-5, 84)
+                    y_edge = y_p = 83
+
+                # move pen
+                drawer.set_pen_position((x_p, y_p))
+                drawer.pen_state = 0
+
+                c = drawer.get_color_map()
+                d = drawer.get_distance_map()
+                can = drawer.get_canvas()
+                pat = drawer.get_patch()
+                p = drawer.get_pen_position()
+
+                action = self.get_random_action((x_p, y_p))
+                
+                action_done = drawer.do_action(action)
+
+
+                ref_drawer.set_pen_position(p) # set pen position of reference drawer
+                ref_drawer.do_action(action_done['action_real']) # draw on ref drawer
+
+                delx, dely = action_to_position(action_done['action_real'])
+                angle = math.atan2(dely, delx)
+
+                if drawer.get_pen_position() not in last_position:
+                    num_strokes += 1
+                    color_maps.append(c)
+                    distance_maps.append(d)
+                    pen_positions.append(p)
+                    canvases.append(can)
+                    canv_patches.append(pat)
+                    y.append(action_done["action_real"])
+                    last_position.pop(0)
+                    last_position.append(drawer.get_pen_position())
+                
+
+            # if not jumped and i>actions.shape[0]//3*2 and drawer.pen_state == 1 and num_strokes < max_strokes-1 and np.random.random(1)[0] <= self.jumping_rate:
+            if not jumped and drawer.pen_state == 1 and num_strokes < max_strokes-1 and np.random.random(1)[0] <= self.jumping_rate:
+                jumping_steps = self.get_pen_jumping(drawer.get_pen_position(), drawer.CANVAS_SIZE, drawer.PATCH_SIZE//2)
+                if jumping_steps is not None:   # if jumping
+                    # print("jump")
+                    angle = np.random.rand() * math.pi
+                    jumped = True
+                    for jump in jumping_steps:
+                        num_strokes += 1
+                        jump_action = position_to_action(jump, 0, drawer.PATCH_SIZE)
+                        color_maps.append(drawer.get_color_map())
+                        distance_maps.append(drawer.get_distance_map())
+                        pen_positions.append(drawer.get_pen_position())
+                        canvases.append(drawer.get_canvas())
+                        canv_patches.append(drawer.get_patch())
+
+                        p = drawer.get_pen_position()
+
+                        action_done = drawer.do_action(jump_action)
+
+                        ref_drawer.set_pen_position(p) # set pen position of reference drawer
+                        ref_drawer.do_action(action_done['action_real']) # draw on ref drawer
+                        
+                        y.append(action_done['action_real'])
+                        if num_strokes == max_strokes-1:
+                            break
+            
+            # pen = 1 #if np.random.rand() >0.8 else 0
+            # num_strokes += 1
+            # color_maps.append(drawer.get_color_map())
+            # distance_maps.append(drawer.get_distance_map())
+            # pen_positions.append(drawer.get_pen_position())
+            # canvases.append(drawer.get_canvas())
+            # canv_patches.append(drawer.get_patch())
+            # action_done = drawer.do_action(self.get_random_action(drawer.get_pen_position(),pen))
+            # # action_done = drawer.do_action(actions[i])
+            # y.append(action_done["action_real"])
+            
+            c = drawer.get_color_map()
+            d = drawer.get_distance_map()
+            can = drawer.get_canvas()
+            pat = drawer.get_patch()
+            p = drawer.get_pen_position()
+
+            # random noise on canvas
+            if np.random.rand() < .05:
+                x_n, y_n = np.random.randint(0, 84, 2)
+                drawer.set_pen_position((x_n, y_n))
+                act_n = self.get_random_action((x_n, y_n), pen_state = 1)
+                drawer.do_action(act_n)
+                drawer.set_pen_position(p)
+
+            if drawer.pen_state==1 and np.random.rand()>0.75:
+                angle = np.random.rand() * math.pi
+                action_done = drawer.do_action(self.get_random_action(drawer.get_pen_position(),0))
+
+                ref_drawer.set_pen_position(p) # set pen position of reference drawer
+                ref_drawer.do_action(action_done['action_real']) # draw on ref drawer
+            else:
+                if np.random.rand() < 0.05:
+                    angle = np.random.rand() * math.pi
+                angle += np.random.rand()/4
+                if angle>math.pi: 
+                    angle = (angle - math.pi) - math.pi
+                elif angle < -math.pi:
+                    angle = (angle + math.pi) + math.pi
+                r = np.random.randint(0, 5)
+                x_t = int(math.cos(angle) * r)
+                y_t = int(math.sin(angle) * r)                
+                action_done = drawer.do_action(position_to_action((x_t,y_t), 1))
+
+                ref_drawer.set_pen_position(p) # set pen position of reference drawer
+                ref_drawer.do_action(action_done['action_real']) # draw on ref drawer
+
+            if drawer.get_pen_position() not in last_position:
+                num_strokes += 1
+                color_maps.append(c)
+                distance_maps.append(d)
+                pen_positions.append(p)
+                canvases.append(can)
+                canv_patches.append(pat)
+                y.append(action_done["action_real"])
+
+                last_position.pop(0)
+                last_position.append(drawer.get_pen_position())
+            
+
+            if num_strokes >= max_strokes or i >= self.num_data-1:
+                jumped = False
+                # proceess the ref
+                ref = ref_drawer.get_canvas()
+                for pos in pen_positions:
+                    #get patches based on pen position every step.
+                    ref_patches.append(ref_drawer.get_patch(pos))
+                
+                for can, dis, col, cp, rp in zip(canvases, distance_maps, color_maps, canv_patches, ref_patches):
+                    x = np.stack( (can, ref, dis, col), axis=2)
+                    X.append(x)
+
+                    p = np.stack( (cp, rp), axis=2)
+                    patches.append(p)
+                
+                drawer.reset()  # Reset drawer state
+                drawer.pen_state = 1
+                angle = np.random.random() * math.pi
+
+                ref_drawer.reset() # reset ref drawer
+
+                last_position = [(-5,-5) for _ in range(5)]
+
+                # last_position = [drawer.get_pen_position(), drawer.get_pen_position(), drawer.get_pen_position()]
+
+                # clear all buffers
+                pen_positions.clear()
+                canvases.clear()
+                distance_maps.clear()
+                color_maps.clear()
+                canv_patches.clear()
+                ref_patches.clear()
+
+                # Reset strokes
+                num_strokes = 0
+                max_strokes = np.random.randint(self.min_strokes, self.max_strokes, 1)[0]
+
+
+        # Shuffle the dataset
+        indices = np.arange(len(y))
+        np.random.shuffle(indices)
+        X = np.array(X, dtype=np.float)[indices]
+        patches = np.array(patches, dtype=np.float)[indices]
+        y = np.array(y, dtype=np.int)[indices]
+        # print(y[y<121].shape, y[y>=121].shape)
+
+        # Squeeze the dims
+        self.X =  np.squeeze(X)
+        self.patches = np.squeeze(patches)
+        self.y = np.squeeze(y)
+
+
     def on_epoch_end(self):
         """
         Generate new data at every end of epoch.
@@ -294,8 +509,8 @@ class RandomStrokeGenerator(keras.utils.Sequence):
 if __name__ == "__main__":
     gen = RandomStrokeGenerator(batch_size=16,
                                      num_data=484, 
-                                     min_strokes=32, 
-                                     max_strokes=64, 
+                                     min_strokes=16, 
+                                     max_strokes=16, 
                                      jumping_rate=0.1,
                                      max_jumping_step=41
                                     )

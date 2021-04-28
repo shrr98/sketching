@@ -10,7 +10,7 @@ class DrawingEnvironment:
 
     SHOW_RENDER = True
     MAX_STEP    = 200
-    GOAL_SIMILARITY_THRESH = .01
+    GOAL_SIMILARITY_THRESH = .05
 
     PENALTY_STEP = -5 # coba coba
 
@@ -82,8 +82,8 @@ class DrawingEnvironment:
 
         if self.episode_step >= self.MAX_STEP or similarity/(84*84) <= self.GOAL_SIMILARITY_THRESH:
             done = True
-            if similarity/(84*84) <= self.GOAL_SIMILARITY_THRESH:
-                reward = 100
+            # if similarity/(84*84) <= self.GOAL_SIMILARITY_THRESH:
+            #     reward = 100
 
         return new_observation, reward, done
         
@@ -131,15 +131,58 @@ class DrawingEnvironment:
 
             images = cv2.resize(images, (3*84*2, 3*84*2))
             cv2.imshow('Current State', images)
-            cv2.waitKey(1)
+            cv2.waitKey(100)
             return images
 
     def close_show(self):
         cv2.destroyAllWindows()
 
-    def get_random_action(self):
+    def closest_node(self, node, nodes):
+        nodes = np.asarray(nodes)
+        deltas = nodes - node
+        dist_2 = np.einsum('ij,ij->i', deltas, deltas)
+        return np.argmin(dist_2)
+
+    def get_action_to_stroke(self):
+        diff = self.reference.get_canvas() - self.drawer.get_canvas()
+        ys, xs = np.where(diff==1)
+        points = np.array(
+            [p for p in zip(xs, ys)], dtype=np.int8
+        )
+
+        pos = np.array(self.drawer.get_pen_position(), dtype=np.int8)
+
+        idx = self.closest_node(pos, points)
+        
+        target_point = points[idx]
+        del_x, del_y = target_point - pos
+
+        if(del_x > 5): del_x = 5
+        elif(del_x < -5): del_x = -5
+
+        if(del_y > 5): del_y = 5
+        elif(del_y < -5): del_y = -5
+
+        action = position_to_action((del_x, del_y), 0)
+    
+        print(target_point, pos, del_x, del_y, action)
+
+        diff_rgb = np.zeros((84,84,3))
+
+        for i in range(ys.shape[0]):
+            cv2.circle(diff_rgb, (xs[i], ys[i]), 0, (255,0,0))
+
+        diff = np.hstack((self.reference.get_canvas(), self.drawer.get_canvas(), diff))
+        cv2.imshow("a", diff)
+        cv2.imshow("ab", diff_rgb)
+        cv2.waitKey(0)
+
+        return action
+
+
+    def get_random_action(self, pen_state=None):
         pen_position = self.drawer.get_pen_position()
-        pen_state = np.random.randint(0, 2)
+        pen_state = np.random.randint(0, 2) if pen_state==None else pen_state
         x_left = min(5, pen_position[0])
         x_right = max(83-5, pen_position[0])
 

@@ -7,9 +7,9 @@ if __name__ == "__main__":
     config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.compat.v1.Session(config=config)
-    # model = tf.keras.models.load_model("models/dqn_newest4_30000_update10000_lrdecay_01300__0944.82max_0215.12avg_-292.56min.h5")
-    model = tf.keras.models.load_model("model/dummy_edge_nostuck2.h5")
-    env = DrawingEnvironment("examples/")
+    # model = tf.keras.models.load_model("models/0426_dqn_newest4_30000_12400__3176.13max_0314.58avg_-1050.29min.h5")
+    model = tf.keras.models.load_model("model/rsg_g1_angle2_edge_nostuck_penupstart3_jump1x41_rarependown_raregen.h5")
+    env = DrawingEnvironment("datasets/")
     SAVE_VIDEO = True
     # if SAVE_VIDEO:
     #     fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -17,7 +17,7 @@ if __name__ == "__main__":
     
     # print(observation[0].shape, observation[1].shape)
     rewards = []
-    for n in range(1):
+    for n in range(5):
         total_reward = 0
         env.reset()
         # env.drawer.set_pen_position((41,41))
@@ -33,6 +33,7 @@ if __name__ == "__main__":
             total_reward += reward
             images = env.show()
             if done :
+                cv2.waitKey(1000)
                 break
         rewards.append(total_reward)
         print(f"Episode {n+1} {total_reward}")
