@@ -113,6 +113,8 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         drawer.reset()
         drawer.pen_state = 1
 
+        ref_drawer = Drawer()
+        ref_drawer.reset()
         actions = np.random.randint(drawer.ACTION_SPACE_SIZE//2, drawer.ACTION_SPACE_SIZE, self.num_data)
         
         color_maps = []
@@ -162,6 +164,10 @@ class RandomStrokeGenerator(keras.utils.Sequence):
                 
                 action_done = drawer.do_action(action)
 
+
+                ref_drawer.set_pen_position(p) # set pen position of reference drawer
+                ref_drawer.do_action(action_done['action_real']) # draw on ref drawer
+
                 if drawer.get_pen_position() not in last_position:
                     num_strokes += 1
                     color_maps.append(c)
@@ -188,7 +194,12 @@ class RandomStrokeGenerator(keras.utils.Sequence):
                         pen_positions.append(drawer.get_pen_position())
                         canvases.append(drawer.get_canvas())
                         canv_patches.append(drawer.get_patch())
+                        p = drawer.get_pen_position()
                         action_done = drawer.do_action(jump_action)
+
+                        ref_drawer.set_pen_position(p) # set pen position of reference drawer
+                        ref_drawer.do_action(action_done['action_real']) # draw on ref drawer
+
                         y.append(action_done['action_real'])
                         if num_strokes == max_strokes-1:
                             break
@@ -209,10 +220,26 @@ class RandomStrokeGenerator(keras.utils.Sequence):
             can = drawer.get_canvas()
             pat = drawer.get_patch()
             p = drawer.get_pen_position()
+
+
+            # random noise on canvas
+            if np.random.rand() < .1:
+                x_n, y_n = np.random.randint(0, 84, 2)
+                drawer.set_pen_position((x_n, y_n))
+                act_n = self.get_random_action((x_n, y_n), pen_state = 1)
+                drawer.do_action(act_n)
+                drawer.set_pen_position(p)
+
             if drawer.pen_state==1 and np.random.rand()>0.7:
                 action_done = drawer.do_action(self.get_random_action(drawer.get_pen_position(),0))
+
+                ref_drawer.set_pen_position(p) # set pen position of reference drawer
+                ref_drawer.do_action(action_done['action_real']) # draw on ref drawer
             else:
                 action_done = drawer.do_action(self.get_random_action(drawer.get_pen_position(),1))
+
+                ref_drawer.set_pen_position(p) # set pen position of reference drawer
+                ref_drawer.do_action(action_done['action_real']) # draw on ref drawer
 
             if drawer.get_pen_position() not in last_position:
                 num_strokes += 1
@@ -230,7 +257,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
             if num_strokes >= max_strokes or i >= self.num_data-1:
                 jumped = False
                 # proceess the ref
-                ref = drawer.get_canvas()
+                ref = ref_drawer.get_canvas()
                 for pos in pen_positions:
                     #get patches based on pen position every step.
                     ref_patches.append(drawer.get_patch(pos))
@@ -244,6 +271,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
                 
                 drawer.reset()  # Reset drawer state
                 drawer.pen_state = 1
+                ref_drawer.reset() # reset ref drawer
 
                 last_position = [(-5,-5) for _ in range(5)]
 
