@@ -12,8 +12,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 from tqdm import tqdm
+import cv2
 
-THRESHOLD_REWARD = -3000
+THRESHOLD_REWARD = -1000
 THRESHOLD_REWARD_ANNEALING = 20
 
 def evaluate_training_result(env, agent, show=False, episodes=1):
@@ -29,7 +30,7 @@ def evaluate_training_result(env, agent, show=False, episodes=1):
     episodes_to_play = episodes
     for i in range(episodes_to_play):
         env.reset()
-        env.drawer.set_pen_position((41,41))
+        # env.drawer.set_pen_position((41,41))
         state = env.get_observation()
         done = False
         episode_reward = 0.0
@@ -57,7 +58,7 @@ def collect_gameplay_experiences(env, agent, buffer, ontrain=True):
     :return: None
     """
     env.reset()
-    env.drawer.set_pen_position((41,41))
+    # env.drawer.set_pen_position((41,41))
     state = env.get_observation()
     done = False
     observations = []
@@ -80,23 +81,37 @@ def collect_gameplay_experiences(env, agent, buffer, ontrain=True):
         curr_position = env.drawer.get_pen_position()
         if (reward == -5 and curr_position in last_positions) or \
             (reward<=0 and len([x for x in last_positions if x==curr_position])>=2):
-            if action == last_action:
-                env.drawer.set_pen_position(last_positions[-1])
-            if np.random.rand() > 0.5:
-                action = env.get_random_action(pen_state=0)
-            else:
-                action = env.get_action_to_stroke()
-            # last_positions = [(-1,-1) for _ in range(5)]
 
-            state = next_state
-            next_state, reward, done = env.step(action)
             pos = last_positions.index(curr_position)
-            curr_position = env.drawer.get_pen_position()
             for i in range(5, pos, -1):
                 observations.pop(-1)
                 last_positions.pop(-1)
                 
             last_positions = [(-5,-5) for _ in range(5, pos, -1)] + last_positions
+            
+            # if action == last_action:
+            #     env.drawer.set_pen_position(last_positions[-1])
+            if np.random.rand() > 0.25:
+                actions = [env.get_random_action(pen_state=1)]
+            else:
+                actions = env.get_actions_to_nearest_stroke()
+            # last_positions = [(-1,-1) for _ in range(5)]
+
+            for a in actions[:-1]:
+                state = next_state
+                next_state, reward, done = env.step(a)
+                total_reward+=reward
+                observations.append((state, next_state, reward, a, done))
+                last_positions.pop(0)
+                last_positions.append(env.drawer.get_pen_position())
+                # env.show()
+                # cv2.waitKey(0)
+
+            
+            action = actions[-1]
+            state = next_state
+            next_state, reward, done = env.step(action)
+            curr_position = env.drawer.get_pen_position()
             
         last_positions.pop(0)
         last_positions.append(curr_position)
@@ -116,7 +131,7 @@ def collect_gameplay_experiences(env, agent, buffer, ontrain=True):
 
 
 
-        env.show()
+        # env.show()
         # print("action: {} | reward: {}".format(action, reward))
 
     print("Train reward : {}".format(total_reward), end=' | ')
@@ -153,16 +168,17 @@ def train_model(max_episodes=50000):
     SHOW_RENDER = True
     UPDATE_TARGET_EVERY=10000
 
-    target_name = "0426_dqn_newest4_30000"
-    agent = DQNAgent(target_name, model_path="model/rsg_g1_angle2_edge_nostuck_penupstart3_jump1x41_rarependown_raregen.h5")
+    target_name = "rsg_g1_30000_manhattannearest_randompen_tmin1000"
+    # agent = DQNAgent(target_name, model_path="model/0405_newest4.h5")
+    agent = DQNAgent(target_name, model_path="model/rsg_g1_edge_nostuck_penupstart3_jump1x41_rarependown_noise.h5")
     buffer = ReplayBuffer()
     env = DrawingEnvironment("datasets/")
     loss = []
     avg_rewards = []
     MAX_AVG_REWARD = -2000
-    for _ in range(1):
+    for _ in range(100):
         collect_gameplay_experiences(env, agent, buffer, ontrain=True)
-    return
+    # return
     agent.EPSILON = 0.0
     for episode_cnt in tqdm(range(1, max_episodes+1), ascii=True, unit = "episode"):
         agent.tensorboard.step = episode_cnt-2
