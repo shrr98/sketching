@@ -96,8 +96,8 @@ class DrawingEnvironment:
         
         if step_taken["pen_state"]==0 or abs(reward_pixel)<1:
             reward += self.PENALTY_STEP 
-        # elif ((abs(step_taken["x"]) < 5 and abs(step_taken["y"]) < 5)):
-        #     reward += (5 - max(step_taken["x"], step_taken["y"]))/5 * self.PENALTY_STEP
+        elif ((abs(step_taken["x"]) < 5 and abs(step_taken["y"]) < 5)):
+            reward += (5 - max(step_taken["x"], step_taken["y"]))/5 * self.PENALTY_STEP
         return reward
             
     def show(self):
@@ -131,7 +131,7 @@ class DrawingEnvironment:
 
             images = cv2.resize(images, (3*84*2, 3*84*2))
             cv2.imshow('Current State', images)
-            cv2.waitKey(100)
+            cv2.waitKey(1)
             return images
 
     def close_show(self):
@@ -139,45 +139,83 @@ class DrawingEnvironment:
 
     def closest_node(self, node, nodes):
         nodes = np.asarray(nodes)
-        deltas = nodes - node
-        dist_2 = np.einsum('ij,ij->i', deltas, deltas)
-        return np.argmin(dist_2)
+        deltas = abs(nodes - node)
+        manhattan_dist = np.max(deltas, axis=1)
+        # dist_2 = np.einsum('ij,ij->i', deltas, deltas)
+        return np.argmin(manhattan_dist)
 
-    def get_action_to_stroke(self):
+    def get_actions_to_nearest_stroke(self):
         diff = self.reference.get_canvas() - self.drawer.get_canvas()
-        ys, xs = np.where(diff==1)
+        ys, xs = np.where(diff>0.9)
+
+        if ys.shape[0] == 0:
+            actions = [self.get_random_action(pen_state=0)]
+            return actions
+
         points = np.array(
             [p for p in zip(xs, ys)], dtype=np.int8
         )
 
+        p = self.drawer.get_pen_position()
         pos = np.array(self.drawer.get_pen_position(), dtype=np.int8)
 
         idx = self.closest_node(pos, points)
         
         target_point = points[idx]
-        del_x, del_y = target_point - pos
+        x_jump, y_jump = target_point - pos
 
-        if(del_x > 5): del_x = 5
-        elif(del_x < -5): del_x = -5
+        # if(del_x > 5): del_x = 5
+        # elif(del_x < -5): del_x = -5
 
-        if(del_y > 5): del_y = 5
-        elif(del_y < -5): del_y = -5
+        # if(del_y > 5): del_y = 5
+        # elif(del_y < -5): del_y = -5
+        pen_step = 5
+        x_direction = 1 if x_jump >=0 else -1
+        y_direction = 1 if y_jump >= 0 else -1
+        
+        if x_jump==0 and y_jump==0: # if not jumping
+            return [self.get_random_action()]
 
-        action = position_to_action((del_x, del_y), 0)
+        x_steps = [x_direction*pen_step for _ in range(x_direction*pen_step, x_jump+x_direction, x_direction*pen_step)]
+        if x_jump % pen_step :
+            if x_direction==1:
+                x_steps.append(x_jump%pen_step)
+            else:
+                x_steps.append(x_jump%pen_step - pen_step)
+        
+        y_steps = [y_direction*pen_step for _ in range(y_direction*pen_step, y_jump+y_direction, y_direction*pen_step)]
+        if y_jump % pen_step :
+            if y_direction==1:
+                y_steps.append(y_jump%pen_step)
+            else:
+                y_steps.append(y_jump%pen_step - pen_step)
+
+        moves = []
+        
+        if len(x_steps) >= len(y_steps):
+            moves = [(x,y) for x, y in zip(x_steps[:len(y_steps)], y_steps)]
+            for x in x_steps[len(y_steps):] :
+                moves.append((x,0))
+        elif len(x_steps) < len(y_steps):
+            moves = [(x,y) for x, y in zip(x_steps, y_steps[:len(y_steps)])]
+            for y in y_steps[len(x_steps):]:
+                moves.append((0,y))
+
+        actions = [position_to_action(m, 0) for m in moves]
     
-        print(target_point, pos, del_x, del_y, action)
+        # print(target_point, pos, [x_jump, y_jump], moves, actions)
 
-        diff_rgb = np.zeros((84,84,3))
+        # diff_rgb = np.zeros((84,84,3))
 
-        for i in range(ys.shape[0]):
-            cv2.circle(diff_rgb, (xs[i], ys[i]), 0, (255,0,0))
+        # for i in range(ys.shape[0]):
+        #     cv2.circle(diff_rgb, (xs[i], ys[i]), 0, (255,0,0))
 
-        diff = np.hstack((self.reference.get_canvas(), self.drawer.get_canvas(), diff))
-        cv2.imshow("a", diff)
-        cv2.imshow("ab", diff_rgb)
-        cv2.waitKey(0)
+        # diff = np.hstack((self.reference.get_canvas(), self.drawer.get_canvas(), diff))
+        # cv2.imshow("a", diff)
+        # cv2.imshow("ab", diff_rgb)
+        # cv2.waitKey(500)
 
-        return action
+        return actions
 
 
     def get_random_action(self, pen_state=None):
