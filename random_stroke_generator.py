@@ -17,7 +17,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         self.MIN_STROKES = min_strokes
         self.MAX_STROKES = max_strokes
         self.curr_step = 8      # curriculum step
-        self.curr_epoch = 3     # curriculum epoch
+        self.curr_epoch = 4    # curriculum epoch 
         self.min_strokes = min_strokes
         self.max_strokes = min_strokes + self.curr_step
         # self.max_strokes = max_strokes
@@ -312,7 +312,8 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         ref_drawer = Drawer()
         ref_drawer.reset()
 
-        angle = np.random.random() * math.pi
+        angle = (np.random.random()-0.5) * 2 * math.pi
+        direction = np.random.choice([-1,1])
 
         color_maps = []
         distance_maps = []
@@ -327,11 +328,18 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         # last_position = [drawer.get_pen_position(), drawer.get_pen_position(), drawer.get_pen_position()]
         last_position = [(-5,-5) for _ in range(5)]
 
+        total_data = 0
+
         num_strokes = 0
         max_strokes = np.random.randint(self.min_strokes, self.max_strokes)
         jumped = False
-        for i in range(self.num_data):
-            if num_strokes>max_strokes//6*3 and num_strokes<2*max_strokes//6*4 and np.random.random() > 0.95 and drawer.pen_state==1: # move pen to edge, to overcome stuck at edge
+        edged = False
+        while True:
+            if np.random.rand() < 0.01: 
+                direction = np.random.choice([-1,1])
+
+            if not edged and num_strokes>max_strokes//6*3 and num_strokes<2*max_strokes//6*4 and np.random.random() > 0.95 and drawer.pen_state==1: # move pen to edge, to overcome stuck at edge
+                edged = True
                 edge = np.random.randint(0,5)
                 x_p, y_p = np.random.randint(0, 84, 2)
                 if edge==0: # pojok kiri
@@ -385,7 +393,8 @@ class RandomStrokeGenerator(keras.utils.Sequence):
                 jumping_steps = self.get_pen_jumping(drawer.get_pen_position(), drawer.CANVAS_SIZE, drawer.PATCH_SIZE//2)
                 if jumping_steps is not None:   # if jumping
                     # print("jump")
-                    angle = np.random.rand() * math.pi
+                    angle = (np.random.random()-0.5) * 2 * math.pi
+                    
                     jumped = True
                     for jump in jumping_steps:
                         num_strokes += 1
@@ -432,16 +441,19 @@ class RandomStrokeGenerator(keras.utils.Sequence):
                 drawer.do_action(act_n)
                 drawer.set_pen_position(p)
 
-            if drawer.pen_state==1 and np.random.rand()>0.75:
-                angle = np.random.rand() * math.pi
+
+            if False:#drawer.pen_state==1 and np.random.rand()>0.95:
+                # angle = np.random.rand() * math.pi
+
                 action_done = drawer.do_action(self.get_random_action(drawer.get_pen_position(),0))
 
                 ref_drawer.set_pen_position(p) # set pen position of reference drawer
                 ref_drawer.do_action(action_done['action_real']) # draw on ref drawer
             else:
-                if np.random.rand() < 0.05:
-                    angle = np.random.rand() * math.pi
-                angle += np.random.rand()/4
+                if np.random.rand() < 0.2:
+                    angle = (np.random.random()-0.5) * 2 * math.pi
+
+                angle += direction * np.random.rand()/4
                 if angle>math.pi: 
                     angle = (angle - math.pi) - math.pi
                 elif angle < -math.pi:
@@ -467,8 +479,9 @@ class RandomStrokeGenerator(keras.utils.Sequence):
                 last_position.append(drawer.get_pen_position())
             
 
-            if num_strokes >= max_strokes or i >= self.num_data-1:
+            if num_strokes >= max_strokes:
                 jumped = False
+                edged = False
                 # proceess the ref
                 ref = ref_drawer.get_canvas()
                 for pos in pen_positions:
@@ -481,10 +494,14 @@ class RandomStrokeGenerator(keras.utils.Sequence):
 
                     p = np.stack( (cp, rp), axis=2)
                     patches.append(p)
+
+                total_data += num_strokes
+                if(total_data>=self.num_data): break
                 
                 drawer.reset()  # Reset drawer state
                 drawer.pen_state = 1
-                angle = np.random.random() * math.pi
+                angle = (np.random.random()-0.5) * 2 * math.pi
+
 
                 ref_drawer.reset() # reset ref drawer
 
@@ -524,7 +541,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         Generate new data at every end of epoch.
         """
 
-        self.generate()
+        self.generate2()
 
         self.epoch += 1
         if self.epoch % self.curr_epoch == 0 and self.max_strokes < self.MAX_STROKES:
@@ -537,9 +554,9 @@ class RandomStrokeGenerator(keras.utils.Sequence):
 if __name__ == "__main__":
     gen = RandomStrokeGenerator(batch_size=16,
                                      num_data=484, 
-                                     min_strokes=16, 
-                                     max_strokes=16, 
-                                     jumping_rate=0.1,
+                                     min_strokes=64, 
+                                     max_strokes=64, 
+                                     jumping_rate=0.01,
                                      max_jumping_step=41
                                     )
 
@@ -547,11 +564,11 @@ if __name__ == "__main__":
 
     print(len(gen))
 
-    for i in range(0,5):
+    for i in range(0,len(gen)):
         [X, x], y = gen.__getitem__(i)
-        # print(y)
+        print(X.shape)
         images = np.hstack((X[0][:,:,0], X[0][:,:,1], X[0][:,:,2], X[0][:,:,3], cv2.resize(x[0][:,:,0], (84,84)), cv2.resize(x[0][:,:,1], (84,84))))
-        for j in range(1,8):
+        for j in range(1,X.shape[0]):
             im1 = np.hstack((X[j][:,:,0], X[j][:,:,1], X[j][:,:,2], X[j][:,:,3], cv2.resize(x[j][:,:,0], (84,84)), cv2.resize(x[j][:,:,1], (84,84))))
             images = np.vstack((images, im1))
 
