@@ -7,9 +7,9 @@ if __name__ == "__main__":
     config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.compat.v1.Session(config=config)
-    # model = tf.keras.models.load_model("models/0426_dqn_newest4_30000_12400__3176.13max_0314.58avg_-1050.29min.h5")
-    model = tf.keras.models.load_model("model/rsg_g1_angle2_edge_nostuck_penupstart3_jump1x41_rarependown_raregen.h5")
-    env = DrawingEnvironment("datasets/")
+    model = tf.keras.models.load_model("models/datasetlama_rsg2_morestroke_dropout2.h5")
+    # model = tf.keras.models.load_model("model/rsg2_morestroke_dropout2.h5")
+    env = DrawingEnvironment("image_objek/")
     SAVE_VIDEO = True
     # if SAVE_VIDEO:
     #     fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -17,26 +17,28 @@ if __name__ == "__main__":
     
     # print(observation[0].shape, observation[1].shape)
     rewards = []
-    for n in range(5):
+    for n in range(298):
         total_reward = 0
         env.reset()
-        # env.drawer.set_pen_position((41,41))
+        env.drawer.set_pen_position((41,41))
         observation = env.get_observation()
         for i in range(500):
             # action = np.random.randint(0, 242)
             pred = model.predict(observation)
             # print(pred.tolist())
             action = np.argmax(pred)
-            print(action)
+            # print(pred[0][action])
             new_observation, reward, done = env.step(action=action)
             observation = new_observation
             total_reward += reward
             images = env.show()
+            # cv2.waitKey(0)
+
             if done :
-                cv2.waitKey(1000)
+                # cv2.waitKey(1000)
                 break
         rewards.append(total_reward)
-        print(f"Episode {n+1} {total_reward}")
+        print(f"Episode {n+1} {env.get_ref_image()} : {total_reward}")
         cv2.waitKey(1)
     
     print("Average Rewaard : {}".format(np.mean(rewards)))

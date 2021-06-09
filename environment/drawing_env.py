@@ -12,20 +12,25 @@ class DrawingEnvironment:
     MAX_STEP    = 200
     GOAL_SIMILARITY_THRESH = .05
 
-    PENALTY_STEP = -5 # coba coba
+    PENALTY_STEP = -1
 
     def __init__(self, datadir='datasets/'):
         self.reference = Reference() # Reference Image to be drawn
         self.drawer = Drawer()
         self.reference_paths = self._get_all_references(datadir)
+        self.index=-1
         self.reset()
 
     def reset(self):
         """
         Reset the RL Environment
         """
-        index = np.random.randint(0, len(self.reference_paths))
-        self.reference.load_canvas(self.reference_paths[index]) # placeholder
+        # self.index = np.random.randint(0, len(self.reference_paths))
+        self.index += 1
+        if self.index == len(self.reference_paths): 
+            self.index = 0
+            np.random.shuffle(self.reference_paths)
+        self.reference.load_canvas(self.reference_paths[self.index]) # placeholder
         self.episode_step = 0
         self.drawer.reset()
 
@@ -80,7 +85,7 @@ class DrawingEnvironment:
 
         self.last_similarity = similarity
 
-        if self.episode_step >= self.MAX_STEP or similarity/(84*84) <= self.GOAL_SIMILARITY_THRESH:
+        if self.episode_step >= self.MAX_STEP or similarity <= self.GOAL_SIMILARITY_THRESH:
             done = True
             # if similarity/(84*84) <= self.GOAL_SIMILARITY_THRESH:
             #     reward = 100
@@ -94,10 +99,14 @@ class DrawingEnvironment:
         reward_pixel =  self.last_similarity - current_similarity
         reward = reward_pixel
         
-        if step_taken["pen_state"]==0 or abs(reward_pixel)<1:
+        if step_taken["x"]==0 and step_taken["y"]==0 and reward<=0:
+            reward = -10
+        elif step_taken["pen_state"]==0 or ((abs(step_taken["x"]) < 5 and abs(step_taken["y"]) < 5)):
             reward += self.PENALTY_STEP 
-        elif ((abs(step_taken["x"]) < 5 and abs(step_taken["y"]) < 5)):
-            reward += (5 - max(step_taken["x"], step_taken["y"]))/5 * self.PENALTY_STEP
+        # if step_taken["pen_state"]==0 or abs(reward_pixel)<1:
+        #     reward += self.PENALTY_STEP 
+        # elif ((abs(step_taken["x"]) < 5 and abs(step_taken["y"]) < 5)):
+        #     reward += (5 - max(step_taken["x"], step_taken["y"]))/10 * self.PENALTY_STEP
         return reward
             
     def show(self):
@@ -231,3 +240,6 @@ class DrawingEnvironment:
         y = np.random.randint(-y_top, 84-y_bot)
 
         return position_to_action((x,y), pen_state, 11)
+
+    def get_ref_image(self):
+        return self.reference_paths[self.index]

@@ -138,7 +138,7 @@ class RandomStrokeGenerator(keras.utils.Sequence):
         num_strokes = 0
 
         while num_strokes < self.num_data:
-            num_examples = np.random.randint(1, 3)
+            num_examples = np.random.randint(1, 2)
             lines = np.random.choice(self.lines, num_examples)
 
             # reset all states
@@ -235,7 +235,7 @@ if __name__ == "__main__":
                                 num_data=484, 
                                 min_strokes=64, 
                                 max_strokes=64,
-                                filename='coba.txt'
+                                filename='valid.txt'
                             )
 
     # moves = gen.randomize_pen_jumping((80,80), 84, 5)

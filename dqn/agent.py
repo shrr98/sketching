@@ -16,7 +16,7 @@ class DQNAgent:
 
     def __init__(self, target_name, model_path=None):
         self.ACTION_SPACE_SIZE = 242
-        self.MIN_EPSILON = 0.01
+        self.MIN_EPSILON = 0.001
         self.EPSILON = 0.1
         self.MODEL_NAME = target_name
         self.q_net = self._load_pretrained_dqn_model(model_path, action_space=self.ACTION_SPACE_SIZE)
@@ -38,12 +38,12 @@ class DQNAgent:
         q_net.add(Dense(32, activation='relu', kernel_initializer='he_uniform'))
         q_net.add(Dense(2, activation='linear', kernel_initializer='he_uniform'))
 
-        q_net.compile(optimizer=Adam(learning_rate=0.0003), loss='mse', metrics=["accuracy"])
+        q_net.compile(optimizer=Adam(learning_rate=0.0001), loss='mse', metrics=["accuracy"])
 
         return q_net
 
     def _load_pretrained_dqn_model(self, model_path, action_space):
-        model_pretrained = tf.keras.models.load_model(model_path)
+        model_pretrained = tf.keras.models.load_model(model_path, custom_objects={'LeakyReLU': tf.nn.leaky_relu})
         # model = tf.keras.models.load_model(model_path)
         # for layer in model_pretrained.layers[:-5]:
         #     layer.trainable = False
@@ -133,8 +133,8 @@ class DQNAgent:
 
     def lr_decay(self, epoch):
         initial_lrate = 0.001
-        drop = 0.3
-        epochs_drop = 1000.0
+        drop = 0.5
+        epochs_drop = 2500.0
         lrate = initial_lrate * math.pow(drop,  
                 math.floor((1+epoch)/epochs_drop))
         tf.keras.backend.set_value(self.q_net.optimizer.learning_rate, lrate)
