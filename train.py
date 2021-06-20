@@ -100,7 +100,7 @@ def collect_gameplay_experiences_with_random(env, agent, buffer, ontrain=True):
             # state = next_state
             # next_state, reward, done = env.step(action)
             # curr_position = env.drawer.get_pen_position()
-            if np.random.random() < 0.2:
+            if np.random.random() < 0.1:
                 actions=[env.get_random_action(pen_state=1)]
             else:
                 actions = env.get_actions_to_nearest_stroke()
@@ -270,14 +270,14 @@ def train_model(max_episodes=50000):
     REDUCE_EPSILON_EVERY = max_episodes
     REDUCE_LR_EVERY = max_episodes
     
-    SHOW_EVERY = 100
+    SHOW_EVERY = 1000
     SHOW_RENDER = True
     UPDATE_TARGET_EVERY=5000
     SAVE_WEIGHTS_EVERY = 5000
 
-    target_name = "datasetlama_rsg2_morestroke_dropout2"
+    target_name = "latest_RSG2_random_rare"
     # agent = DQNAgent(target_name, model_path="model/0405_newest4.h5")
-    agent = DQNAgent(target_name, model_path="model/rsg2_morestroke_dropout2.h5")
+    agent = DQNAgent(target_name, model_path="experiments/supervised/latest_RSG2.h5")
     buffer = ReplayBuffer()
     env = DrawingEnvironment("datasets/")
     loss = []
@@ -311,7 +311,7 @@ def train_model(max_episodes=50000):
             agent.update_target_network()
 
         if episode_cnt % SAVE_WEIGHTS_EVERY==0:
-            agent.q_net.save(f'models/{target_name}_{episode_cnt:0>5d}.h5')
+            agent.q_net.save(f'experiments/rl/{target_name}_{episode_cnt:0>5d}.h5')
 
         if episode_cnt % AGGREGATE_STATS_EVERY == 0:            
             average_reward = sum(avg_rewards[-AGGREGATE_STATS_EVERY:])/len(avg_rewards[-AGGREGATE_STATS_EVERY:])
@@ -323,7 +323,7 @@ def train_model(max_episodes=50000):
         if SHOW_RENDER and episode_cnt % SHOW_EVERY==0:
             r = evaluate_training_result(env, agent, show=True, episodes=1)
             print("\nShowing... Reward: {}\n".format(r))
-    agent.q_net.save(f'models/{target_name}.h5')
+    agent.q_net.save(f'experiments/rl/{target_name}.h5')
     
     plot(loss, avg_rewards)
 

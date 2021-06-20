@@ -252,7 +252,7 @@ if __name__ == "__main__":
 
         cv2.imshow("images", images)
         # im = np.array(255*X[0][:,:,1]).astype(np.uint8)
-        # cv2.imwrite("random_images/{}.png".format(i), im)
+        cv2.imwrite("random_images/{}.png".format(i), im)
         cv2.waitKey(0)
 
     # key, val = np.unique(y, return_counts=True, return_index=True)

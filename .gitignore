@@ -10,5 +10,5 @@ examples/*
 datasets/*
 random_images/*
 **.png
-random_stroke_generator
 **.txt
+**.h5

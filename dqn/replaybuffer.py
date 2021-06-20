@@ -10,7 +10,7 @@ class ReplayBuffer:
     """
 
     def __init__(self):
-        self.gameplay_experiences = deque(maxlen=50_000)
+        self.gameplay_experiences = deque(maxlen=40_000)
 
     def store_gameplay_experience(self, state, next_state, reward, action, done):
         """

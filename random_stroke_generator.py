@@ -563,11 +563,11 @@ class RandomStrokeGenerator(keras.utils.Sequence):
 
 
 if __name__ == "__main__":
-    gen =  RandomStrokeGenerator(batch_size=16,
-                                     num_data=484, 
-                                     min_strokes=128, 
-                                     max_strokes=129, 
-                                     jumping_rate=0.1,
+    gen =  RandomStrokeGenerator(batch_size=4,
+                                     num_data=16, 
+                                     min_strokes=2, 
+                                     max_strokes=3, 
+                                     jumping_rate=0.0,
                                      max_jumping_step=41
                                     )
 
@@ -576,19 +576,24 @@ if __name__ == "__main__":
     print(len(gen))
     # for i in range(30):
     #     gen.on_epoch_end()
-
+    bound = np.full((84, 1), 0.5, dtype=np.float)
     for i in range(0,len(gen)):
         [X, x], y = gen.__getitem__(i)
         print(X.shape)
-        images = np.hstack((X[0][:,:,0], X[0][:,:,1], X[0][:,:,2], X[0][:,:,3], cv2.resize(x[0][:,:,0], (84,84)), cv2.resize(x[0][:,:,1], (84,84))))
-        for j in range(1,X.shape[0]):
-            im1 = np.hstack((X[j][:,:,0], X[j][:,:,1], X[j][:,:,2], X[j][:,:,3], cv2.resize(x[j][:,:,0], (84,84)), cv2.resize(x[j][:,:,1], (84,84))))
-            images = np.vstack((images, im1))
+
+        # images = np.hstack((X[0][:,:,0], bound, X[0][:,:,1], bound, X[0][:,:,2], bound, X[0][:,:,3], bound, cv2.resize(x[0][:,:,0], (84,84)), bound, cv2.resize(x[0][:,:,1], (84,84))))
+        
+        images = np.hstack((X[-1][:,:,0], bound, X[-1][:,:,2], bound, X[-1][:,:,3], bound, cv2.resize(x[-1][:,:,0], (84,84)), bound, X[-1][:,:,1] ))
+        print(y[-1])
+        # for j in range(1,X.shape[0]):
+        #     im1 = np.hstack((X[j][:,:,0], X[j][:,:,1], X[j][:,:,2], X[j][:,:,3], cv2.resize(x[j][:,:,0], (84,84)), cv2.resize(x[j][:,:,1], (84,84))))
+        #     images = np.vstack((images, im1))
 
         cv2.imshow("images", images)
-        # im = np.array(255*X[0][:,:,1]).astype(np.uint8)
-        # cv2.imwrite("random_images/{}.png".format(i), im)
+        im = np.array(255*images).astype(np.uint8)
+        cv2.imwrite("random_images/{}.png".format(i), im)
         cv2.waitKey(0)
+        break
 
     # key, val = np.unique(y, return_counts=True, return_index=True)
     # print("\n".join(a for a in zip(key, val)))

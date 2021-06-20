@@ -243,3 +243,6 @@ class DrawingEnvironment:
 
     def get_ref_image(self):
         return self.reference_paths[self.index]
+
+    def get_ref_number(self):
+        return len(self.reference_paths)
