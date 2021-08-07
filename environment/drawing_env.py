@@ -1,3 +1,4 @@
+import utils
 import cv2
 import numpy as np
 from utils.utils import pixel_similarity, crop_image, position_to_action
@@ -21,6 +22,9 @@ class DrawingEnvironment:
         self.index=-1
         self.reset()
 
+    def set_reference(self, path):
+        self.reference_paths = [path]
+
     def reset(self):
         """
         Reset the RL Environment
@@ -29,7 +33,7 @@ class DrawingEnvironment:
         self.index += 1
         if self.index == len(self.reference_paths): 
             self.index = 0
-            np.random.shuffle(self.reference_paths)
+            # np.random.shuffle(self.reference_paths)
         self.reference.load_canvas(self.reference_paths[self.index]) # placeholder
         self.episode_step = 0
         self.drawer.reset()
@@ -139,6 +143,7 @@ class DrawingEnvironment:
             )
 
             images = cv2.resize(images, (3*84*2, 3*84*2))
+            
             cv2.imshow('Current State', images)
             cv2.waitKey(1)
             return images

@@ -12,3 +12,6 @@ random_images/*
 **.png
 **.txt
 **.h5
+**.jpg
+**.pyc
+**.pth

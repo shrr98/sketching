@@ -232,9 +232,9 @@ class RandomStrokeGenerator(keras.utils.Sequence):
 
 if __name__ == "__main__":
     gen = RandomStrokeGenerator(batch_size=16,
-                                num_data=484, 
-                                min_strokes=64, 
-                                max_strokes=64,
+                                num_data=32, 
+                                min_strokes=8, 
+                                max_strokes=8,
                                 filename='valid.txt'
                             )
 
