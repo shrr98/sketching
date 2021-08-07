@@ -4,4 +4,14 @@ __pycache__/
 .ipynb_checkpoints/*
 logs/*
 model/*
+models/*
+exp/*
 examples/*
+datasets/*
+random_images/*
+**.png
+**.txt
+**.h5
+**.jpg
+**.pyc
+**.pth

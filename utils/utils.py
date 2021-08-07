@@ -13,6 +13,7 @@ def pixel_similarity(reference, canvas):
     canvas *= 255
     L = reference.shape[0]
     diff_square = np.subtract(reference, canvas)**2
+    similarity = np.sum(diff_square)
     similarity = np.sum(diff_square) / L**2
 
     return similarity
@@ -26,7 +27,7 @@ def crop_image(img, bb):
     top, left, bottom, right = bb
     row, col = img.shape
     target_row, target_col = (bottom-top, right-left)
-    crop = np.full((bottom-top, right-left), 0, dtype=np.float)
+    crop = np.full((bottom-top, right-left), -1, dtype=np.float)
 
     target_top, top = (0, top) if top>=0 else (-top, 0)
     target_left, left = (0, left) if left>=0 else (-left, 0)
@@ -37,7 +38,7 @@ def crop_image(img, bb):
 
     return crop
 
-def position_to_action(position, pen_state, patch_size):
+def position_to_action(position, pen_state, patch_size=11):
     """
     Convert a position step to action.
     :param position: position step (x,y)
@@ -50,6 +51,23 @@ def position_to_action(position, pen_state, patch_size):
     if pen_state:
         action += patch_size**2
     return action
+
+def action_to_position(action, patch_size=11):
+    index = action % patch_size**2
+
+    # expected x and y target by moving to index
+    x = index % patch_size -5
+    y = index // patch_size -5
+
+    # # the real x and y target (due to canvas boundary) 
+    # target = (
+    #         min(self.CANVAS_SIZE-1, max(0, (self.pen_position[0]) + x)),
+    #         min(self.CANVAS_SIZE-1, max(0, (self.pen_position[1]) + y))
+    #     )
+    # x_target = target[0] - self.pen_position[0] 
+    # y_target = target[1] - self.pen_position[1] 
+    return (x,y)
+    
 
 if __name__=="__main__":
     ref = np.random.randint(0,255, (84,84))

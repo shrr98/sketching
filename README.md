@@ -9,14 +9,25 @@ This project is based on :
 ## Generate Contour Drawing from Image
 For generating contour drawing, This project uses code and pretrained model of Photo-Sketching available from [mtli/PhotoSkect](https://github.com/mtli/PhotoSketch).
 
-[!] The code is not available yet.
+The code is under ```img2sketch``` directory with some adjustments based on the need of this project.
 
 ## Drawing Agent
 This project implements Doodle-SDQ as the method to train the drawing agent. Training process takes 2 step:
 1. Supervised learning using Stroke Demonstration
-  Rather than using real stroke demonstration, I use full random stroke generator to generate datasets.
-  I got this result:
-  ![Stroke Demo Result](test_out_bunga.avi)
+  Rather than using real stroke demonstration, We use full random stroke generator to generate datasets.
   
 2. Reinforcement Learning using DQN
-  This is **TODO**
+  The pre-trained model is then retrained usin Deep RL to explore more experiences in order to learn the optimal policy.
+  
+## How To Use
+### Requirements:
+Two conda environments:
+1. `tfrl`: environment with tensorflow library for the DQN agent (will update the requirements soon).
+1. `sketch`: environment with PyTorch library for the sketch generator (will update the requirements soon).
+### Run The Program
+1. Download the pretraind model of Photo-Sketching from [mtli/PhotoSkect], unzip it, and place the files under `img2sketch/checkpoints/pretrained`.
+1. Download our [final model](https://drive.google.com/file/d/11xq1w66VcxP1zGCU2owvHoq2nmFHofZx/view?usp=sharing) and place it under `models` with filename `final.h5`.
+1. To run the program, simply run this command:
+  ```bash
+  python run.py [directory to your image] [your image filename]
+  ```
