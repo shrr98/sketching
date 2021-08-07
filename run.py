@@ -32,8 +32,7 @@ if __name__ == "__main__":
     config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.compat.v1.Session(config=config)
-    # model = tf.keras.models.load_model("models/datasetlama_rsg2_morestroke_dropout2.h5")\
-    model_name = "datasetlama_rsg2_morestroke_dropout2_50000"
+    model_name = "final"
     data_dir = "img2sketch/dataset/results"
     tf.keras.backend.clear_session()
     model = tf.keras.models.load_model("models/{}.h5".format(model_name))
@@ -83,7 +82,6 @@ if __name__ == "__main__":
         print("====================================")
         print(f"Gambar : {ori_path}")
         print("{} step, {:.02f} seconds".format(i+1, exec_time))
-        # cv2.waitKey(1)
 
         print("Total reward: {:.02f}".format(total_reward))
 
