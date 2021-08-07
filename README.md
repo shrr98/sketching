@@ -31,3 +31,7 @@ Two conda environments:
   ```bash
   python run.py [directory to your image] [your image filename]
   ```
+  
+## Contributor
+Made with :heart: by:
+Shintya Rezky Rahmayanti (`shrr98`)
