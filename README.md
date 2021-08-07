@@ -28,8 +28,8 @@ Two conda environments:
   Environment with PyTorch library for the sketch generator (will update the requirements soon).
 ### Run The Program
 1. Download the pretraind model of Photo-Sketching from [mtli/PhotoSkect], unzip it, and place the files under `img2sketch/checkpoints/pretrained`.
-2. Download our [final model](https://drive.google.com/file/d/11xq1w66VcxP1zGCU2owvHoq2nmFHofZx/view?usp=sharing) and place it under `models` with filename `final.h5`.
-To run the program, simply run this command:
-```bash
-python run.py [directory to your image] [your image filename]
-```
+1. Download our [final model](https://drive.google.com/file/d/11xq1w66VcxP1zGCU2owvHoq2nmFHofZx/view?usp=sharing) and place it under `models` with filename `final.h5`.
+1. To run the program, simply run this command:
+  ```bash
+  python run.py [directory to your image] [your image filename]
+  ```
